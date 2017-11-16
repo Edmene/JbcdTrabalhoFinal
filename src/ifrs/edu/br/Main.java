@@ -46,7 +46,7 @@ public class Main {
         static final String JDBC_DRIVER = "org.postgresql.Driver";
         static final String DB_URL = "jdbc:postgresql://192.168.1.3/jdbc_work";
         static final String USER = "postgres";
-        static final String PASS = "CreaAuzen64";
+        static final String PASS = "";
 
         Connection conn;
         Statement st;
