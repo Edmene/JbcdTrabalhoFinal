@@ -2,7 +2,10 @@ package ifrs.edu.br.venda;
 
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.negocio.Cliente;
+import org.postgresql.ds.PGConnectionPoolDataSource;
 
+import javax.sql.PooledConnection;
+import java.sql.ResultSet;
 import java.text.DecimalFormat;
 import java.util.Date;
 import java.util.LinkedList;
@@ -66,17 +69,16 @@ public class Venda implements OperacoesCrud {
     }
 
     @Override
-    public void cadastrar() {
+    public void cadastrar(PooledConnection connection) {
         //cliente = pesquisarCliente();
         //data = Date;
         //status = true;
         //listaItens = addListaItems(); //Laco adicionando produtos na lista e banco
         //valorTotal = total dos valores dos produtos
-
     }
 
     @Override
-    public void editar() {
+    public void editar(PooledConnection connection) {
         //this = pesquisa compra;
         //lista os items
         //pede para remover itens ou alterar quantidade
@@ -86,9 +88,14 @@ public class Venda implements OperacoesCrud {
     }
 
     @Override
-    public void deletar() {
+    public void deletar(PooledConnection connection) {
         //cancelar venda
         //atualiza no banco
+    }
+
+    @Override
+    public ResultSet procuraRegistro(PooledConnection connection) {
+        return null;
     }
 
 }

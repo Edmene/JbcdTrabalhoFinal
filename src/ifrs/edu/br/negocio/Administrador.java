@@ -3,7 +3,10 @@ package ifrs.edu.br.negocio;
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.autenticacao.Autenticacao;
 import ifrs.edu.br.autenticacao.Perfil;
+import org.postgresql.ds.PGConnectionPoolDataSource;
 
+import javax.sql.PooledConnection;
+import java.sql.ResultSet;
 import java.util.Scanner;
 
 public class Administrador extends Pessoa implements Autenticacao, OperacoesCrud {
@@ -69,19 +72,26 @@ public class Administrador extends Pessoa implements Autenticacao, OperacoesCrud
     }
 
     @Override
-    public void cadastrar() {
+    public void cadastrar(PooledConnection connection) {
 
     }
 
     @Override
-    public void editar() {
+    public void editar(PooledConnection connection) {
 
     }
 
     @Override
-    public void deletar() {
+    public void deletar(PooledConnection connection) {
 
     }
+
+    @Override
+    public ResultSet procuraRegistro(PooledConnection connection) {
+        return null;
+    }
+
+
     /*
     public void setPerfil(String descricao){
         Perfil perfil = getPerfil();
