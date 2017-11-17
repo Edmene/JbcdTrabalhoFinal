@@ -4,11 +4,9 @@ import ifrs.edu.br.OperacoesCrud;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Scanner;
+import java.util.regex.Pattern;
 
 public class Cliente extends Pessoa implements OperacoesCrud {
     private String bandeiraCC;
@@ -95,6 +93,18 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     @Override
     public void editar(PooledConnection connection) {
         entradaUsuario(false);
+        /*
+        while (rs.next()) {
+        String coffeeName = rs.getString("COF_NAME");
+        int supplierID = rs.getInt("SUP_ID");
+        float price = rs.getFloat("PRICE");
+        int sales = rs.getInt("SALES");
+        int total = rs.getInt("TOTAL");
+        System.out.println(coffeeName + "\t" + supplierID +
+            "\t" + price + "\t" + sales +
+            "\t" + total);
+        }
+         */
     }
 
     @Override
@@ -103,8 +113,39 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     }
 
     @Override
-    public ResultSet procuraRegistro(PooledConnection connection) {
-        return null;
+    public ResultSet procuraRegistro(PooledConnection connection) throws SQLException {
+        System.out.println("Digite o nome do cliente ou seu cpf");
+        Scanner sc = new Scanner(System.in);
+        String entrada = sc.nextLine();
+        Statement stmt = connection.getConnection().createStatement();
+        ResultSet rs = null;
+        try{
+            Integer.parseInt(entrada);
+            rs = pesquisa(0, entrada, stmt);
+        }
+        catch (NumberFormatException exception){
+            rs = pesquisa(1, entrada, stmt);
+        }
+        finally {
+            stmt.close();
+            connection.close();
+            return rs;
+        }
+    }
+
+    private ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
+        String query = null;
+        ResultSet resultSet = null;
+        if(tipo == 0){
+            query = "SELECT * FROM cliente INNER JOIN pessoas ON (cliente.id = pessoas.id)"+
+                    "WHERE cpf = '"+entrada+"';";
+        }
+        else {
+            query = "SELECT * FROM cliente INNER JOIN pessoas ON (cliente.id = pessoas.id)"+
+                    "WHERE nome LIKE = '^"+entrada+"';";
+        }
+        ResultSet rs = stmt.executeQuery(query);
+        return rs;
     }
 
 }
