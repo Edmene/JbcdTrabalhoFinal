@@ -4,6 +4,8 @@ import ifrs.edu.br.OperacoesCrud;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Scanner;
@@ -63,6 +65,31 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     @Override
     public void cadastrar(PooledConnection connection) {
         entradaUsuario(true);
+        Connection pgConnection = null;
+        try {
+            pgConnection = connection.getConnection();
+            Statement statement = pgConnection.createStatement();
+            //Primeira Query responsavel pela insersao de uma pessoa
+            statement.addBatch("INSERT INTO pessoa (cpf, nome, sobrenome)" +
+                    " VALUES ("+String.valueOf(this.getCpf())+",'"+
+                    this.getNome()+"','"+this.getSobrenome()+"');");
+
+            //Segunda query responsavel pela insersao de um cliente
+            statement.addBatch("INSERT INTO cliente (id, bandeiracc, numerocc)"+
+            " VALUES ('SELECT id from pessoa WHERE cpf = \'"+this.getCpf()+"\'','"
+                    +this.bandeiraCC+"','"+this.numeroCC+"')");
+            statement.executeBatch();
+            pgConnection.commit();
+        }
+        catch (Exception e){
+            try {
+                pgConnection.rollback();
+            }
+            catch (Exception exception){
+                System.err.println(exception);
+            }
+
+        }
     }
 
     @Override
