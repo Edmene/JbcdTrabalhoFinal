@@ -92,7 +92,6 @@ public class Cliente extends Pessoa implements OperacoesCrud {
 
     @Override
     public void editar(PooledConnection connection) throws SQLException {
-        entradaUsuario(false);
         ResultSet rs = procuraRegistro(connection);
         int inicio = 0;
         boolean permanecerEmLaco = true;
@@ -123,18 +122,17 @@ public class Cliente extends Pessoa implements OperacoesCrud {
                 }
             }
         }
-        /*
-        while (rs.next()) {
-        String coffeeName = rs.getString("COF_NAME");
-        int supplierID = rs.getInt("SUP_ID");
-        float price = rs.getFloat("PRICE");
-        int sales = rs.getInt("SALES");
-        int total = rs.getInt("TOTAL");
-        System.out.println(coffeeName + "\t" + supplierID +
-            "\t" + price + "\t" + sales +
-            "\t" + total);
-        }
-         */
+        this.numeroCC=rs.getString("numerocc");
+        this.bandeiraCC=rs.getString("bandeiracc");
+        this.setNome(rs.getString("nome"));
+        this.setSobrenome(rs.getString("sobrenome"));
+        this.setCpf(rs.getString("cpf").toCharArray());
+        entradaUsuario(false);
+        rs.updateString("numerocc", this.numeroCC);
+        rs.updateString("bandeiracc", this.bandeiraCC);
+        rs.updateString("nome", this.getNome());
+        rs.updateString("sobrenome", this.getSobrenome());
+        rs.updateString("cpf", String.valueOf(this.getCpf()));
     }
 
     @Override
@@ -154,7 +152,7 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         if(base < rs.getFetchSize()){
             System.out.println(".) Proximo");
         }
-        if(base > 9){
+        if(base > 10){
             System.out.println(",) Anterior");
         }
         System.out.println("q) Voltar");
