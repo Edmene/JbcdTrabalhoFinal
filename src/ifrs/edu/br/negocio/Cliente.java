@@ -91,8 +91,38 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     }
 
     @Override
-    public void editar(PooledConnection connection) {
+    public void editar(PooledConnection connection) throws SQLException {
         entradaUsuario(false);
+        ResultSet rs = procuraRegistro(connection);
+        int inicio = 0;
+        boolean permanecerEmLaco = true;
+        while (permanecerEmLaco){
+            int registroFinal = construirMenu(rs, inicio);
+            Scanner sc = new Scanner(System.in);
+            String entrada = sc.nextLine();
+            if(entrada.contains(".") ||
+                    entrada.contains(",") ||
+                    entrada.contains("q")){
+                if (entrada.contains(",") && inicio-10 >= 0) {
+                    inicio -= 10;
+                }
+                if (entrada.contains(".") && inicio < rs.getFetchSize() - 1) {
+                    inicio += 10;
+                }
+                if (entrada.contains("q")) {
+                    permanecerEmLaco = false;
+                }
+            }
+            else{
+                try{
+                    rs.absolute(Integer.parseInt(entrada));
+                    permanecerEmLaco = false;
+                }
+                catch (NumberFormatException e){
+                    System.err.println("Erro ao converter para inteiro.");
+                }
+            }
+        }
         /*
         while (rs.next()) {
         String coffeeName = rs.getString("COF_NAME");
@@ -112,6 +142,26 @@ public class Cliente extends Pessoa implements OperacoesCrud {
 
     }
 
+    private Integer construirMenu(ResultSet rs, Integer base) throws SQLException {
+        System.out.println("Resultados de pesquisa");
+        base+=1;
+        int n=0;
+        for (n=base;n<=base+9;n++){
+            rs.absolute(n);
+            System.out.println(String.format("%d) %s - %s", n, rs.getString("nome"), rs.getString("sobrenome")));
+            n+=1;
+        }
+        if(base < rs.getFetchSize()){
+            System.out.println(".) Proximo");
+        }
+        if(base > 9){
+            System.out.println(",) Anterior");
+        }
+        System.out.println("q) Voltar");
+
+        return n;
+    }
+
     @Override
     public ResultSet procuraRegistro(PooledConnection connection) throws SQLException {
         System.out.println("Digite o nome do cliente ou seu cpf");
@@ -129,8 +179,8 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         finally {
             stmt.close();
             connection.close();
-            return rs;
         }
+        return rs;
     }
 
     private ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {

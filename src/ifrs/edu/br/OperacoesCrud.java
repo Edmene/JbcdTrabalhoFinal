@@ -8,7 +8,7 @@ import java.sql.SQLException;
 
 public interface OperacoesCrud {
     void cadastrar(PooledConnection connection);
-    void editar(PooledConnection connection);
+    void editar(PooledConnection connection) throws SQLException;
     void deletar(PooledConnection connection);
     ResultSet procuraRegistro(PooledConnection connection) throws SQLException;
     default PooledConnection conectar(PGConnectionPoolDataSource dataSource){
