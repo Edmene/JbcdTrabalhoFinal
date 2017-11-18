@@ -92,7 +92,8 @@ public class Cliente extends Pessoa implements OperacoesCrud {
 
     @Override
     public void editar(PooledConnection connection) throws SQLException {
-        ResultSet rs = procuraRegistro(connection);
+        Connection pgConnection = connection.getConnection();
+        ResultSet rs = procuraRegistro(pgConnection);
         int inicio = 0;
         boolean permanecerEmLaco = true;
         while (permanecerEmLaco){
@@ -133,7 +134,9 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         rs.updateString("nome", this.getNome());
         rs.updateString("sobrenome", this.getSobrenome());
         rs.updateString("cpf", String.valueOf(this.getCpf()));
+        pgConnection.commit();
         rs.close();
+        pgConnection.close();
     }
 
     @Override
@@ -162,11 +165,11 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     }
 
     @Override
-    public ResultSet procuraRegistro(PooledConnection connection) throws SQLException {
+    public ResultSet procuraRegistro(Connection connection) throws SQLException {
         System.out.println("Digite o nome do cliente ou seu cpf");
         Scanner sc = new Scanner(System.in);
         String entrada = sc.nextLine();
-        Statement stmt = connection.getConnection().createStatement();
+        Statement stmt = connection.createStatement();
         ResultSet rs = null;
         try{
             Integer.parseInt(entrada);

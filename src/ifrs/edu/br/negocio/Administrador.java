@@ -6,7 +6,9 @@ import ifrs.edu.br.autenticacao.Perfil;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
+import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Scanner;
 
 public class Administrador extends Pessoa implements Autenticacao, OperacoesCrud {
@@ -87,7 +89,7 @@ public class Administrador extends Pessoa implements Autenticacao, OperacoesCrud
     }
 
     @Override
-    public ResultSet procuraRegistro(PooledConnection connection) {
+    public ResultSet procuraRegistro(Connection connection) throws SQLException {
         return null;
     }
 

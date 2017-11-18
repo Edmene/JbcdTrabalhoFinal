@@ -5,7 +5,9 @@ import ifrs.edu.br.negocio.Produto;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
+import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class ItemVenda implements OperacoesCrud {
     private Produto produto;
@@ -65,7 +67,7 @@ public class ItemVenda implements OperacoesCrud {
     }
 
     @Override
-    public ResultSet procuraRegistro(PooledConnection connection) {
+    public ResultSet procuraRegistro(Connection connection) throws SQLException {
         return null;
     }
 

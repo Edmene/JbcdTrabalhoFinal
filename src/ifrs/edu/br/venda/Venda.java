@@ -5,7 +5,9 @@ import ifrs.edu.br.negocio.Cliente;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
+import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.util.Date;
 import java.util.LinkedList;
@@ -94,7 +96,7 @@ public class Venda implements OperacoesCrud {
     }
 
     @Override
-    public ResultSet procuraRegistro(PooledConnection connection) {
+    public ResultSet procuraRegistro(Connection connection) throws SQLException {
         return null;
     }
 
