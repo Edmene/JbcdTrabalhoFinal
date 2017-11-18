@@ -133,6 +133,7 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         rs.updateString("nome", this.getNome());
         rs.updateString("sobrenome", this.getSobrenome());
         rs.updateString("cpf", String.valueOf(this.getCpf()));
+        rs.close();
     }
 
     @Override
