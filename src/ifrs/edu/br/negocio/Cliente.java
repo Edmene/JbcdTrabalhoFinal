@@ -94,35 +94,7 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     public void editar(PooledConnection connection) throws SQLException {
         Connection pgConnection = connection.getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
-        int inicio = 0;
-        boolean permanecerEmLaco = true;
-        while (permanecerEmLaco){
-            int registroFinal = construirMenu(rs, inicio);
-            Scanner sc = new Scanner(System.in);
-            String entrada = sc.nextLine();
-            if(entrada.contains(".") ||
-                    entrada.contains(",") ||
-                    entrada.contains("q")){
-                if (entrada.contains(",") && inicio-10 >= 0) {
-                    inicio -= 10;
-                }
-                if (entrada.contains(".") && inicio < rs.getFetchSize() - 1) {
-                    inicio += 10;
-                }
-                if (entrada.contains("q")) {
-                    permanecerEmLaco = false;
-                }
-            }
-            else{
-                try{
-                    rs.absolute(Integer.parseInt(entrada));
-                    permanecerEmLaco = false;
-                }
-                catch (NumberFormatException e){
-                    System.err.println("Erro ao converter para inteiro.");
-                }
-            }
-        }
+        rs = selecionaRow(rs);
         this.numeroCC=rs.getString("numerocc");
         this.bandeiraCC=rs.getString("bandeiracc");
         this.setNome(rs.getString("nome"));
@@ -140,8 +112,14 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     }
 
     @Override
-    public void deletar(PooledConnection connection) {
-
+    public void deletar(PooledConnection connection) throws SQLException {
+        Connection pgConnection = connection.getConnection();
+        ResultSet rs = procuraRegistro(pgConnection);
+        rs = selecionaRow(rs);
+        rs.deleteRow();
+        pgConnection.commit();
+        rs.close();
+        pgConnection.close();
     }
 
     private Integer construirMenu(ResultSet rs, Integer base) throws SQLException {
@@ -181,6 +159,40 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         finally {
             stmt.close();
             connection.close();
+        }
+        return rs;
+    }
+
+    public ResultSet selecionaRow(ResultSet rs) throws SQLException{
+        //ResultSet rs = procuraRegistro(pgConnection);
+        int inicio = 0;
+        boolean permanecerEmLaco = true;
+        while (permanecerEmLaco){
+            int registroFinal = construirMenu(rs, inicio);
+            Scanner sc = new Scanner(System.in);
+            String entrada = sc.nextLine();
+            if(entrada.contains(".") ||
+                    entrada.contains(",") ||
+                    entrada.contains("q")){
+                if (entrada.contains(",") && inicio-10 >= 0) {
+                    inicio -= 10;
+                }
+                if (entrada.contains(".") && inicio < rs.getFetchSize() - 1) {
+                    inicio += 10;
+                }
+                if (entrada.contains("q")) {
+                    permanecerEmLaco = false;
+                }
+            }
+            else{
+                try{
+                    rs.absolute(Integer.parseInt(entrada));
+                    permanecerEmLaco = false;
+                }
+                catch (NumberFormatException e){
+                    System.err.println("Erro ao converter para inteiro.");
+                }
+            }
         }
         return rs;
     }
