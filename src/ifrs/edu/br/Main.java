@@ -35,9 +35,6 @@ public class Main {
                         mostrarMenuTipo2();
                     }
                     if(opInicial == 2){
-                        mostrarMenuTipo2();
-                    }
-                    if(opInicial == 3){
                         mostrarMenuVenda();
                     }
                     int op2 = leInt(sc);
