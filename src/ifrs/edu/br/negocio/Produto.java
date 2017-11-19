@@ -7,6 +7,7 @@ import javax.sql.PooledConnection;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Scanner;
 
 public class Produto implements OperacoesCrud {
@@ -89,20 +90,88 @@ public class Produto implements OperacoesCrud {
     @Override
     public void cadastrar(PooledConnection connection) {
         entradaUsuario(true);
+        Connection pgConnection = null;
+        try {
+            pgConnection = connection.getConnection();
+            Statement statement = pgConnection.createStatement();
+            //Query responsavel pela insersao de um produto
+            statement.addBatch("INSERT INTO produto (nome, descricao, preco)" +
+                    " VALUES ("+this.nome+",'"+
+                    this.descricao+"','"+String.valueOf(this.preco)+"');");
+            statement.executeBatch();
+            pgConnection.commit();
+        }
+        catch (Exception e){
+            try {
+                pgConnection.rollback();
+            }
+            catch (Exception exception){
+                System.err.println(exception);
+            }
+
+        }
     }
 
     @Override
-    public void editar(PooledConnection connection) {
+    public void editar(PooledConnection connection) throws SQLException {
+        Connection pgConnection = connection.getConnection();
+        ResultSet rs = procuraRegistro(pgConnection);
+        rs = selecionaRow(rs, this);
+        this.nome=rs.getString("nome");
+        this.descricao=rs.getString("descricao");
+        this.preco = rs.getFloat("preco");
         entradaUsuario(false);
-    }
-
-    @Override
-    public void deletar(PooledConnection connection) {
-
+        rs.updateString("nome", this.nome);
+        rs.updateString("descricao", this.descricao);
+        rs.updateFloat("preco", this.preco);
+        pgConnection.commit();
+        rs.close();
+        pgConnection.close();
     }
 
     @Override
     public ResultSet procuraRegistro(Connection connection) throws SQLException {
-        return null;
+        System.out.println("Digite o nome do produto");
+        Scanner sc = new Scanner(System.in);
+        String entrada = sc.nextLine();
+        Statement stmt = connection.createStatement();
+        ResultSet rs = null;
+        try {
+            Integer.parseInt(entrada);
+            rs = pesquisa(0, entrada, stmt);
+        }
+        finally {
+            stmt.close();
+            //connection.close();
+        }
+        return rs;
+    }
+
+    @Override
+    public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
+        String query = "SELECT * FROM produto WHERE nome LIKE = '^"+entrada+"';";
+        ResultSet rs = stmt.executeQuery(query);
+        return rs;
+    }
+
+    @Override
+    public Integer construirMenu(ResultSet rs, Integer base) throws SQLException {
+        System.out.println("Resultados de pesquisa");
+        base+=1;
+        int n=0;
+        for (n=base;n<=base+9;n++){
+            rs.absolute(n);
+            System.out.println(String.format("%d) %s - %f", n, rs.getString("nome"), rs.getFloat("preco")));
+            n+=1;
+        }
+        if(base < rs.getFetchSize()){
+            System.out.println(".) Proximo");
+        }
+        if(base > 10){
+            System.out.println(",) Anterior");
+        }
+        System.out.println("q) Voltar");
+
+        return n;
     }
 }

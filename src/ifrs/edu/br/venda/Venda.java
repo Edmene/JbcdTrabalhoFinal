@@ -8,6 +8,7 @@ import javax.sql.PooledConnection;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.DecimalFormat;
 import java.util.Date;
 import java.util.LinkedList;
@@ -90,13 +91,23 @@ public class Venda implements OperacoesCrud {
     }
 
     @Override
-    public void deletar(PooledConnection connection) {
+    public void deletar(PooledConnection connection) throws SQLException {
         //cancelar venda
         //atualiza no banco
     }
 
     @Override
     public ResultSet procuraRegistro(Connection connection) throws SQLException {
+        return null;
+    }
+
+    @Override
+    public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
+        return null;
+    }
+
+    @Override
+    public Integer construirMenu(ResultSet rs, Integer base) throws SQLException {
         return null;
     }
 

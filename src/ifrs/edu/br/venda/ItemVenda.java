@@ -8,6 +8,7 @@ import javax.sql.PooledConnection;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 public class ItemVenda implements OperacoesCrud {
     private Produto produto;
@@ -61,13 +62,23 @@ public class ItemVenda implements OperacoesCrud {
     }
 
     @Override
-    public void deletar(PooledConnection connection) {
+    public void deletar(PooledConnection connection) throws SQLException{
         //remove linha da tabela relacao
         //recalcula total da venda
     }
 
     @Override
     public ResultSet procuraRegistro(Connection connection) throws SQLException {
+        return null;
+    }
+
+    @Override
+    public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
+        return null;
+    }
+
+    @Override
+    public Integer construirMenu(ResultSet rs, Integer base) throws SQLException {
         return null;
     }
 
