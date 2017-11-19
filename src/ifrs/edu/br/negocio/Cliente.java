@@ -163,7 +163,7 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         return rs;
     }
 
-    public ResultSet selecionaRow(ResultSet rs) throws SQLException{
+    private ResultSet selecionaRow(ResultSet rs) throws SQLException{
         //ResultSet rs = procuraRegistro(pgConnection);
         int inicio = 0;
         boolean permanecerEmLaco = true;

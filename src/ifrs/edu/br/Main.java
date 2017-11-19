@@ -1,16 +1,15 @@
 package ifrs.edu.br;
 
-import ifrs.edu.br.negocio.Administrador;
 import ifrs.edu.br.negocio.Cliente;
 import ifrs.edu.br.negocio.Produto;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
+import java.sql.SQLException;
 import java.util.Scanner;
 
 public class Main {
 
     public static void main(String[] args){
-        //Adicionar login
         Scanner sc = new Scanner(System.in);
         try{
             PGConnectionPoolDataSource dataSource = new PGConnectionPoolDataSource();
@@ -49,46 +48,17 @@ public class Main {
         catch (Exception e){
             System.out.println(e);
         }
-
-
-        /*
-        static final String JDBC_DRIVER = "org.postgresql.Driver";
-        static final String DB_URL = "jdbc:postgresql://192.168.1.3/jdbc_work";
-        static final String USER = "postgres";
-        static final String PASS = "";
-
-        Connection conn;
-        Statement st;
-        ResultSet rs;
-
-        try {
-            Class.forName(JDBC_DRIVER);
-            System.out.println("Connecting to database...");
-            conn = DriverManager.getConnection(DB_URL, USER, PASS);
-            st = conn.createStatement();
-            rs = st.executeQuery("SELECT nome FROM motorista");
-
-        }
-        catch (Exception e){
-            System.out.println(e);
-        }
-        */
-
     }
 
-    private static void subMenus(int op, int op2, Scanner sc, PGConnectionPoolDataSource dataSource){
+    private static void subMenus(int op, int op2, Scanner sc, PGConnectionPoolDataSource dataSource) throws SQLException{
         if(op >= 0 && op < 3){
             if(op2 == 0){
-                OperacoesCrud opSql = new Administrador();
+                OperacoesCrud opSql = new Cliente();
                 if (op == 0) {
-                    Administrador adm = new Administrador();
-                    opSql = adm;
-                }
-                if (op == 1) {
                     Cliente cli = new Cliente();
                     opSql = cli;
                 }
-                if (op == 2) {
+                if (op == 1) {
                     Produto prod = new Produto();
                     opSql = prod;
                 }
@@ -96,16 +66,12 @@ public class Main {
             }
             else {
                 String nome = nomeRegistro(sc);
-                OperacoesCrud opSql = new Administrador();
+                OperacoesCrud opSql = new Cliente();
                 if (op == 0) {
-                    Administrador adm = new Administrador(nome);
-                    opSql = adm;
-                }
-                if (op == 1) {
                     Cliente cli = new Cliente(nome);
                     opSql = cli;
                 }
-                if (op == 2) {
+                if (op == 1) {
                     Produto prod = new Produto(nome, "", 0.0f);
                     opSql = prod;
                 }
@@ -146,7 +112,7 @@ public class Main {
     }
 
     private static void mostrarMenu(){
-        String[] entradas = {"Vendedor","Cliente","Produto","Venda"};
+        String[] entradas = {"Cliente","Produto","Venda"};
         iteraEntreStrings(entradas);
     }
 
