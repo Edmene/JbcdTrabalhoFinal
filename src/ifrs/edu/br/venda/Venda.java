@@ -91,7 +91,7 @@ public class Venda implements OperacoesCrud {
             statement.executeUpdate("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
                     " VALUES ("+String.valueOf(rs.getInt("id"))+",'"+
                     this.date+"','"+String.valueOf(0)+"','true') RETURNING *;");
-            ResultSet resultSet = statement.getResultSet(); //Pegando o retorno da insersao para as insersoes de itens
+            ResultSet resultSet = statement.getResultSet(); //Pegando o retorno da insersao para uso nos iten
             rs.close();
             boolean continuarAdicionarItens = true;
             while (continuarAdicionarItens){
