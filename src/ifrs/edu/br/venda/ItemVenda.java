@@ -64,6 +64,7 @@ public class ItemVenda implements OperacoesCrud {
         //cria relacao entre a venda e item na tabela relacao
     }
 
+
     public ItemVenda retornaCadastro(PooledConnection connection){
         cadastrar(connection);
         return this;

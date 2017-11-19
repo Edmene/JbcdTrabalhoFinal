@@ -88,9 +88,10 @@ public class Venda implements OperacoesCrud {
             ResultSet rs = cli.procuraRegistro(pgConnection);
             rs = selecionaRow(rs, cli);
             //Primeira Query responsavel pela insersao de uma pessoa
-            statement.execute("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
+            statement.executeUpdate("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
                     " VALUES ("+String.valueOf(rs.getInt("id"))+",'"+
-                    this.date+"','"+String.valueOf(0)+"','true');");
+                    this.date+"','"+String.valueOf(0)+"','true') RETURNING *;");
+            ResultSet resultSet = statement.getResultSet(); //Pegando o retorno da insersao para as insersoes de itens
             rs.close();
             boolean continuarAdicionarItens = true;
             while (continuarAdicionarItens){
