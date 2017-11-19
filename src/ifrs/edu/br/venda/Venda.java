@@ -2,16 +2,14 @@ package ifrs.edu.br.venda;
 
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.negocio.Cliente;
-import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.text.DecimalFormat;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.LinkedList;
+import java.util.Scanner;
 
 public class Venda implements OperacoesCrud {
     private Cliente cliente;
@@ -19,6 +17,7 @@ public class Venda implements OperacoesCrud {
     private Date date;
     private boolean status;
     private LinkedList<ItemVenda> listaItens = new LinkedList<>();
+    private int idBanco;
 
     public Venda(Cliente cliente, Date date){
         this.cliente = cliente;
@@ -65,6 +64,13 @@ public class Venda implements OperacoesCrud {
         return true;
     }
 
+    private void menuItens(){
+        System.out.println("Selecione uma acao");
+        System.out.println("0) Adicionar");
+        System.out.println("1) Finalizar compra");
+        System.out.print("Op: ");
+    }
+
     @Override
     public String toString(){
         DecimalFormat df = new DecimalFormat("#.##");
@@ -73,6 +79,53 @@ public class Venda implements OperacoesCrud {
 
     @Override
     public void cadastrar(PooledConnection connection) {
+        Connection pgConnection = null;
+        try {
+            this.date = java.sql.Date.valueOf(LocalDate.now());
+            pgConnection = connection.getConnection();
+            Statement statement = pgConnection.createStatement();
+            Cliente cli = new Cliente();
+            ResultSet rs = cli.procuraRegistro(pgConnection);
+            rs = selecionaRow(rs, cli);
+            //Primeira Query responsavel pela insersao de uma pessoa
+            statement.execute("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
+                    " VALUES ("+String.valueOf(rs.getInt("id"))+",'"+
+                    this.date+"','"+String.valueOf(0)+"','true');");
+            rs.close();
+            boolean continuarAdicionarItens = true;
+            while (continuarAdicionarItens){
+                menuItens();
+                Scanner sc = new Scanner(System.in);
+                if(sc.nextInt() == 1){
+                    continuarAdicionarItens = false;
+                }
+                else {
+                    ItemVenda item = new ItemVenda();
+                    adicionarItem(item.retornaCadastro(connection));
+                }
+            }
+            for (ItemVenda item : listaItens){
+                statement.execute("INSERT INTO lista_venda (lista_item_id, lista_item_prod, venda_item)"+
+                "VALUES ('"+item.getIdBanco()+"','"+item.getProdutoId()+"','"+this.idBanco+"')");
+            }
+                statement.executeUpdate("UPDATE venda SET valor_total='"+this.valorTotal+"'");
+            /*
+            //Segunda query responsavel pela insersao de um cliente
+            statement.addBatch("INSERT INTO cliente (id, bandeiracc, numerocc)"+
+                    " VALUES ('SELECT id from pessoa WHERE cpf = \'"+this.getCpf()+"\'','"
+                    +this.bandeiraCC+"','"+this.numeroCC+"')");
+            */
+            //statement.executeBatch();
+            pgConnection.commit();
+        }
+        catch (Exception e){
+            try {
+                pgConnection.rollback();
+            }
+            catch (Exception exception){
+                System.err.println(exception);
+            }
+        }
         //cliente = pesquisarCliente();
         //data = Date;
         //status = true;

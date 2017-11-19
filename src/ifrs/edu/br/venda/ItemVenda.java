@@ -14,10 +14,15 @@ public class ItemVenda implements OperacoesCrud {
     private Produto produto;
     private float quantidade;
     private float valorUnitario;
+    private int idBanco;
 
 
     public Produto getProduto() {
         return produto;
+    }
+
+    public String getProdutoId() {
+        return String.valueOf(idBanco);
     }
 
     public void setProduto(Produto produto) {
@@ -34,6 +39,10 @@ public class ItemVenda implements OperacoesCrud {
 
     float getValorUnitario() {
         return valorUnitario;
+    }
+
+    String getIdBanco(){
+        return String.valueOf(this.idBanco);
     }
 
     public void setValorUnitario(float valorUnitario) {
@@ -53,6 +62,11 @@ public class ItemVenda implements OperacoesCrud {
         //pede quantidade
         //cadastra no banco
         //cria relacao entre a venda e item na tabela relacao
+    }
+
+    public ItemVenda retornaCadastro(PooledConnection connection){
+        cadastrar(connection);
+        return this;
     }
 
     @Override
