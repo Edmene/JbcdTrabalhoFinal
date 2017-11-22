@@ -60,6 +60,7 @@ public interface OperacoesCrud {
                     inicio += 10;
                 }
                 if (entrada.contains("q")) {
+                    rs = null;
                     permanecerEmLaco = false;
                 }
 

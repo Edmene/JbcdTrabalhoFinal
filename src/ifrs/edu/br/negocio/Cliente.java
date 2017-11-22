@@ -93,6 +93,9 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     public void editar(PooledConnection connection) throws SQLException {
         Connection pgConnection = connection.getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
+        if(rs == null){
+            return;
+        }
         int rowInicial = rs.getRow();
         rs.last();
         if(rowInicial == rs.getRow()){
@@ -102,6 +105,9 @@ public class Cliente extends Pessoa implements OperacoesCrud {
             rs.first();
         }
         rs = selecionaRow(rs, this);
+        if(rs == null){
+            return;
+        }
         this.numeroCC=rs.getString("numerocc");
         this.bandeiraCC=rs.getString("bandeiracc");
         this.setNome(rs.getString("nome"));
@@ -161,6 +167,7 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         if(base > 10){
             System.out.println(",) Anterior");
         }
+        System.out.println("q) Voltar");
         System.out.print("Digite uma opcao: ");
 
         return n;
