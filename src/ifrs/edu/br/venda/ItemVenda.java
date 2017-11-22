@@ -4,6 +4,7 @@ import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.ResultObjectTuple;
 import ifrs.edu.br.negocio.Produto;
 import org.postgresql.ds.PGConnectionPoolDataSource;
+import org.postgresql.ds.PGPooledConnection;
 
 import javax.sql.PooledConnection;
 import java.sql.Connection;
@@ -48,6 +49,10 @@ public class ItemVenda implements OperacoesCrud {
 
     public void setValorUnitario(float valorUnitario) {
         this.valorUnitario = valorUnitario;
+    }
+
+    public void operacoesListaDeVenda(Integer vendaId, PooledConnection connection){
+
     }
 
     @Override

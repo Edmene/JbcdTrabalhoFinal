@@ -139,6 +139,12 @@ public class Venda implements OperacoesCrud {
 
     @Override
     public void editar(PooledConnection connection) throws SQLException {
+        Connection pgConnection = connection.getConnection();
+        ResultSet rs = procuraRegistro(pgConnection);
+        rs = selecionaRow(rs, this);
+        ItemVenda itens = new ItemVenda();
+        Statement stmt = pgConnection.createStatement();
+        itens.operacoesListaDeVenda(rs.getInt("id"), connection);
         //this = pesquisa compra;
         //lista os items
         //pede para remover itens ou alterar quantidade
