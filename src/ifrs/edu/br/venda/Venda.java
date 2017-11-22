@@ -111,7 +111,7 @@ public class Venda implements OperacoesCrud {
                 statement.execute("INSERT INTO lista_venda (lista_item_id, lista_item_prod, venda_item)"+
                 "VALUES ('"+item.getIdBanco()+"','"+item.getProdutoId()+"','"+this.idBanco+"')");
             }
-                statement.executeUpdate("UPDATE venda SET valor_total='"+this.valorTotal+"'");
+            statement.executeUpdate("UPDATE venda SET valor_total='"+this.valorTotal+"'");
             /*
             //Segunda query responsavel pela insersao de um cliente
             statement.addBatch("INSERT INTO cliente (id, bandeiracc, numerocc)"+
@@ -138,7 +138,7 @@ public class Venda implements OperacoesCrud {
     }
 
     @Override
-    public void editar(PooledConnection connection) {
+    public void editar(PooledConnection connection) throws SQLException {
         //this = pesquisa compra;
         //lista os items
         //pede para remover itens ou alterar quantidade
@@ -149,23 +149,64 @@ public class Venda implements OperacoesCrud {
 
     @Override
     public void deletar(PooledConnection connection) throws SQLException {
+        Connection pgConnection = connection.getConnection();
+        ResultSet rs = procuraRegistro(pgConnection);
+        rs = selecionaRow(rs, this);
+        rs.updateBoolean("status", false);
+        pgConnection.commit();
+        rs.close();
+        pgConnection.close();
         //cancelar venda
         //atualiza no banco
     }
 
     @Override
     public ResultSet procuraRegistro(Connection connection) throws SQLException {
-        return null;
+        System.out.println("Digite o cpf do cliente");
+        Scanner sc = new Scanner(System.in);
+        String entrada = sc.nextLine();
+        System.out.println("Digite a data da compra");
+        entrada += ";"+sc.nextLine();
+        Statement stmt = connection.createStatement();
+        ResultSet rs = null;
+        try {
+            rs = pesquisa(0, entrada, stmt);
+        }
+        finally {
+            stmt.close();
+        }
+        return rs;
     }
 
     @Override
     public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
-        return null;
+        String[] entradaTratada = entrada.split(";");
+        String query = "SELECT * FROM venda INNER JOIN pessoas ON (venda.cliente_id = pessoas.id)"+
+                "WHERE cpf = '"+entradaTratada[0]+"' AND data = '"+entradaTratada[1]+"';";
+        ResultSet rs = stmt.executeQuery(query);
+        return rs;
     }
 
     @Override
     public Integer construirMenu(ResultSet rs, Integer base) throws SQLException {
-        return null;
+        System.out.println("Resultados de pesquisa");
+        base+=1;
+        int n=0;
+        for (n=base;n<=base+9;n++){
+            rs.absolute(n);
+            System.out.println(String.format("%d) %s - %f - %s", n, rs.getString("nome"),
+                    rs.getFloat("valor_total"), String.valueOf(rs.getDate("data"))));
+            n+=1;
+        }
+        if(base < rs.getFetchSize()){
+            System.out.println(".) Proximo");
+        }
+        if(base > 10){
+            System.out.println(",) Anterior");
+        }
+        System.out.println("q) Voltar");
+
+        return n;
     }
 
 }
