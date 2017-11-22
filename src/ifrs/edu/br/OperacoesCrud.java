@@ -1,5 +1,6 @@
 package ifrs.edu.br;
 
+import ifrs.edu.br.negocio.Cliente;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
@@ -10,7 +11,7 @@ import java.sql.Statement;
 import java.util.Scanner;
 
 public interface OperacoesCrud {
-    ResultObjectTuple cadastrar(PooledConnection connection);
+    ResultObjectTuple cadastrar(PooledConnection connection) throws SQLException;
     void editar(PooledConnection connection) throws SQLException;
 
     default void deletar(PooledConnection connection) throws SQLException{
@@ -44,16 +45,18 @@ public interface OperacoesCrud {
         boolean permanecerEmLaco = true;
         while (permanecerEmLaco){
             Scanner sc = new Scanner(System.in);
-            String entrada = sc.nextLine();
             crud.construirMenu(rs, inicio);
+            String entrada = sc.nextLine();
             if(entrada.contains(".") ||
                     entrada.contains(",") ||
                     entrada.contains("q")){
 
-                if (entrada.contains(",") && inicio-10 >= 0) {
+                if (entrada.contains(",") && inicio-9 >= 0) {
                     inicio -= 10;
                 }
-                if (entrada.contains(".") && inicio < rs.getFetchSize() - 1) {
+                ResultSet rs2 = rs;
+                rs2.last();
+                if (entrada.contains(".") && inicio < rs2.getRow() - 1) {
                     inicio += 10;
                 }
                 if (entrada.contains("q")) {

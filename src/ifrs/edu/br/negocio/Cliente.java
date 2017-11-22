@@ -2,19 +2,17 @@ package ifrs.edu.br.negocio;
 
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.ResultObjectTuple;
-import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
 import java.sql.*;
 import java.util.Scanner;
-import java.util.regex.Pattern;
 
 public class Cliente extends Pessoa implements OperacoesCrud {
     private String bandeiraCC;
     private String numeroCC;
 
     public Cliente(String cpf){
-        this.setCpf(cpf.toCharArray());
+        this.setCpf(cpf);
     }
 
     public Cliente(){}
@@ -62,34 +60,31 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     }
 
     @Override
-    public ResultObjectTuple cadastrar(PooledConnection connection) {
+    public ResultObjectTuple cadastrar(PooledConnection connection) throws SQLException {
         entradaUsuario(true);
         Connection pgConnection = null;
         ResultSet rs = null;
         try {
             pgConnection = connection.getConnection();
             Statement statement = pgConnection.createStatement();
-            //Primeira Query responsavel pela insersao de uma pessoa
-            statement.addBatch("INSERT INTO pessoa (cpf, nome, sobrenome)" +
-                    " VALUES ("+String.valueOf(this.getCpf())+",'"+
-                    this.getNome()+"','"+this.getSobrenome()+"');");
+            statement.execute("INSERT INTO pessoa (cpf, nome, sobrenome)" +
+                    " VALUES ('"+this.getCpf().toString()+"','"+this.getNome()+"','"+this.getSobrenome()+"');");
 
             //Segunda query responsavel pela insersao de um cliente
-            statement.addBatch("INSERT INTO cliente (id, bandeiracc, numerocc)"+
-            " VALUES ('SELECT id from pessoa WHERE cpf = \'"+this.getCpf()+"\'','"
-                    +this.bandeiraCC+"','"+this.numeroCC+"') RETURNING *;");
-            statement.executeBatch();
-            pgConnection.commit();
+            rs = statement.executeQuery("SELECT * FROM pessoa WHERE cpf = '"+this.getCpf()+"';");
+            rs.next();
+            statement.execute("INSERT INTO cliente (id, bandeiracc, numerocc)"+
+                    " VALUES ("+rs.getInt("id")+",'"+this.bandeiraCC+"','"+this.numeroCC+"') RETURNING *;");
+            //statement.executeBatch();
+            //conn.commit();
             rs = statement.getResultSet();
+            pgConnection.commit();
+            pgConnection.close();
+
         }
         catch (Exception e){
-            try {
-                pgConnection.rollback();
-            }
-            catch (Exception exception){
-                System.err.println(exception);
-            }
-
+            pgConnection.rollback();
+            System.err.println(e);
         }
         return new ResultObjectTuple(rs,this);
     }
@@ -98,18 +93,47 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     public void editar(PooledConnection connection) throws SQLException {
         Connection pgConnection = connection.getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
+        int rowInicial = rs.getRow();
+        rs.last();
+        if(rowInicial == rs.getRow()){
+            return;
+        }
+        else {
+            rs.first();
+        }
         rs = selecionaRow(rs, this);
         this.numeroCC=rs.getString("numerocc");
         this.bandeiraCC=rs.getString("bandeiracc");
         this.setNome(rs.getString("nome"));
         this.setSobrenome(rs.getString("sobrenome"));
-        this.setCpf(rs.getString("cpf").toCharArray());
+        this.setCpf(rs.getString("cpf"));
+
         entradaUsuario(false);
+
+        PreparedStatement pStatementPessoa = pgConnection.prepareStatement("UPDATE pessoa SET cpf = ?, nome = ?,"+
+        "sobrenome = ? WHERE id = ?");
+        PreparedStatement pStatementCliente = pgConnection.prepareStatement("UPDATE cliente set bandeiracc = ?," +
+                "numerocc = ? WHERE id = ?");
+
+        pStatementPessoa.setString(1, this.getCpf());
+        pStatementPessoa.setString(2, this.getNome());
+        pStatementPessoa.setString(3, this.getSobrenome());
+        pStatementPessoa.setInt(4, rs.getInt("id"));
+        pStatementCliente.setString(1, this.bandeiraCC);
+        pStatementCliente.setString(2, this.numeroCC);
+        pStatementCliente.setInt(3, rs.getInt("id"));
+
+        pStatementPessoa.execute();
+        pStatementCliente.execute();
+        /*
         rs.updateString("numerocc", this.numeroCC);
         rs.updateString("bandeiracc", this.bandeiraCC);
         rs.updateString("nome", this.getNome());
         rs.updateString("sobrenome", this.getSobrenome());
         rs.updateString("cpf", String.valueOf(this.getCpf()));
+        rs.updateRow();
+        Nao funciona em result sets resultantes de JOINs
+        */
         pgConnection.commit();
         rs.close();
         pgConnection.close();
@@ -117,21 +141,27 @@ public class Cliente extends Pessoa implements OperacoesCrud {
 
     @Override
     public Integer construirMenu(ResultSet rs, Integer base) throws SQLException {
-        System.out.println("Resultados de pesquisa");
+        System.out.println("\nResultados de pesquisa");
         base+=1;
         int n=0;
+        System.out.println();
         for (n=base;n<=base+9;n++){
             rs.absolute(n);
-            System.out.println(String.format("%d) %s - %s", n, rs.getString("nome"), rs.getString("sobrenome")));
-            n+=1;
+            System.out.println(String.format("%d) %s - %s - %s", n, rs.getString("nome"),
+                    rs.getString("sobrenome"), rs.getString("cpf")));
+            if(!rs.absolute(n+1)){
+                break;
+            }
         }
-        if(base < rs.getFetchSize()){
+        rs.last();
+        int limite = rs.getRow();
+        if(base < limite && limite > 10){
             System.out.println(".) Proximo");
         }
         if(base > 10){
             System.out.println(",) Anterior");
         }
-        System.out.println("q) Voltar");
+        System.out.print("Digite uma opcao: ");
 
         return n;
     }
@@ -141,7 +171,8 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         System.out.println("Digite o nome do cliente ou seu cpf");
         Scanner sc = new Scanner(System.in);
         String entrada = sc.nextLine();
-        Statement stmt = connection.createStatement();
+        Statement stmt = connection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_UPDATABLE);
         ResultSet rs = null;
         try{
             Integer.parseInt(entrada);
@@ -150,10 +181,6 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         catch (NumberFormatException exception){
             rs = pesquisa(1, entrada, stmt);
         }
-        finally {
-            stmt.close();
-            //connection.close();
-        }
         return rs;
     }
 
@@ -161,12 +188,12 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
         String query = null;
         if(tipo == 0){
-            query = "SELECT * FROM cliente INNER JOIN pessoas ON (cliente.id = pessoas.id)"+
+            query = "SELECT * FROM cliente INNER JOIN pessoa ON (cliente.id = pessoa.id)"+
                     "WHERE cpf = '"+entrada+"';";
         }
         else {
-            query = "SELECT * FROM cliente INNER JOIN pessoas ON (cliente.id = pessoas.id)"+
-                    "WHERE nome LIKE = '^"+entrada+"';";
+            query = "SELECT * FROM cliente INNER JOIN pessoa ON (cliente.id = pessoa.id)"+
+                    "WHERE nome = '"+entrada+"';";
         }
         ResultSet rs = stmt.executeQuery(query);
         return rs;

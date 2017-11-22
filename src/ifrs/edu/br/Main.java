@@ -3,7 +3,7 @@ package ifrs.edu.br;
 import ifrs.edu.br.negocio.Cliente;
 import ifrs.edu.br.negocio.Produto;
 import org.postgresql.ds.PGConnectionPoolDataSource;
-
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Scanner;
 
@@ -14,7 +14,8 @@ public class Main {
         try{
             PGConnectionPoolDataSource dataSource = new PGConnectionPoolDataSource();
             dataSource.setDefaultAutoCommit(false);
-            dataSource.setDatabaseName("jbdc_work");
+            ResultSet rs = null;
+            dataSource.setDatabaseName("jdbc_work");
             dataSource.setServerName("192.168.1.3");
             dataSource.setPassword("JdbcWorkIfrs2017");
             dataSource.setPortNumber(5432);
@@ -29,12 +30,15 @@ public class Main {
                 }
                 else{
                     if(opInicial == 0){
+                        System.out.println("\nCliente");
                         mostrarMenuTipo2();
                     }
                     if(opInicial == 1){
+                        System.out.println("\nProduto");
                         mostrarMenuTipo2();
                     }
                     if(opInicial == 2){
+                        System.out.println("\nVenda");
                         mostrarMenuVenda();
                     }
                     int op2 = leInt(sc);
@@ -62,14 +66,13 @@ public class Main {
                 opSql.cadastrar(opSql.conectar(dataSource));
             }
             else {
-                String nome = nomeRegistro(sc);
                 OperacoesCrud opSql = new Cliente();
                 if (op == 0) {
-                    Cliente cli = new Cliente(nome);
+                    Cliente cli = new Cliente();
                     opSql = cli;
                 }
                 if (op == 1) {
-                    Produto prod = new Produto(nome, "", 0.0f);
+                    Produto prod = new Produto();
                     opSql = prod;
                 }
                 if (op2 == 1) {
@@ -96,16 +99,11 @@ public class Main {
         return inteiro;
     }
 
-    private static String nomeRegistro(Scanner sc){
-        System.out.print("Digite o parametro de pesquisa do registro: ");
-        return sc.nextLine();
-    }
-
     private static void iteraEntreStrings(String[] iterar){
         for(int i=0;i<iterar.length;i++){
             System.out.println(i+")"+iterar[i]);
         }
-        System.out.println("Digite uma opcao:");
+        System.out.print("Digite uma opcao:");
     }
 
     private static void mostrarMenu(){

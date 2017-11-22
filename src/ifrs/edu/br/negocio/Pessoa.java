@@ -5,7 +5,7 @@ import java.util.Scanner;
 public abstract class Pessoa {
     private String nome;
     private String sobrenome;
-    private char[] cpf;
+    private String cpf;
 
     public String getNome() {
         return nome;
@@ -23,12 +23,12 @@ public abstract class Pessoa {
         this.sobrenome = sobrenome;
     }
 
-    public char[] getCpf() {
+    public String getCpf() {
         return cpf;
     }
 
-    public void setCpf(char[] cpf) {
-        if(cpf.length == 9){
+    public void setCpf(String cpf) {
+        if(cpf.length() == 9){
             this.cpf = cpf;
         }
         else{
@@ -60,10 +60,10 @@ public abstract class Pessoa {
         if (!todasAsEntradas) {
             String tmp = sc.nextLine();
             if (tmp.length() != 0) {
-                this.setCpf(tmp.toCharArray());
+                this.setCpf(tmp);
             }
         } else {
-            this.setCpf(sc.nextLine().toCharArray());
+            this.setCpf(sc.nextLine());
         }
     }
 }
