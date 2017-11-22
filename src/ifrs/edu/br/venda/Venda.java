@@ -18,7 +18,6 @@ public class Venda implements OperacoesCrud {
     private Date date;
     private boolean status;
     private LinkedList<ItemVenda> listaItens = new LinkedList<>();
-    private int idBanco;
 
     public Venda(Cliente cliente, Date date){
         this.cliente = cliente;
@@ -94,6 +93,7 @@ public class Venda implements OperacoesCrud {
                     " VALUES ("+String.valueOf(rs.getInt("id"))+",'"+
                     this.date+"','"+String.valueOf(0)+"','true') RETURNING *;");
             resultSet = statement.getResultSet(); //Pegando o retorno da insersao para uso nos iten
+            resultSet.next();
             //rs.close();
             boolean continuarAdicionarItens = true;
             while (continuarAdicionarItens){
@@ -109,7 +109,7 @@ public class Venda implements OperacoesCrud {
             }
             for (ItemVenda item : listaItens){
                 statement.execute("INSERT INTO lista_venda (lista_item_id, lista_item_prod, venda_item)"+
-                "VALUES ('"+item.getIdBanco()+"','"+item.getProdutoId()+"','"+this.idBanco+"')");
+                "VALUES ('"+item.getIdBanco()+"','"+item.getProdutoId()+"','"+resultSet.getInt("id")+"')");
             }
             statement.executeUpdate("UPDATE venda SET valor_total='"+this.valorTotal+"'");
             /*

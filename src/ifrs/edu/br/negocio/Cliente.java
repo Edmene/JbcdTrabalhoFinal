@@ -161,7 +161,7 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         }
         rs.last();
         int limite = rs.getRow();
-        if(base < limite && limite > 10){
+        if(base < limite && limite > 9){
             System.out.println(".) Proximo");
         }
         if(base > 10){
@@ -200,7 +200,7 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         }
         else {
             query = "SELECT * FROM cliente INNER JOIN pessoa ON (cliente.id = pessoa.id)"+
-                    "WHERE nome = '"+entrada+"';";
+                    "WHERE nome LIKE '"+entrada+"';";
         }
         ResultSet rs = stmt.executeQuery(query);
         return rs;

@@ -2,7 +2,6 @@ package ifrs.edu.br.negocio;
 
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.ResultObjectTuple;
-import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
 import java.sql.Connection;
@@ -89,7 +88,7 @@ public class Produto implements OperacoesCrud {
     }
 
     @Override
-    public ResultObjectTuple cadastrar(PooledConnection connection) {
+    public ResultObjectTuple cadastrar(PooledConnection connection) throws SQLException {
         entradaUsuario(true);
         Connection pgConnection = null;
         ResultSet rs = null;
@@ -98,18 +97,14 @@ public class Produto implements OperacoesCrud {
             Statement statement = pgConnection.createStatement();
             //Query responsavel pela insersao de um produto
             statement.execute("INSERT INTO produto (nome, descricao, preco)" +
-                    " VALUES ("+this.nome+",'"+
+                    " VALUES ('"+this.nome+"','"+
                     this.descricao+"','"+String.valueOf(this.preco)+"') RETURNING *;");
             pgConnection.commit();
             rs = statement.getResultSet();
         }
         catch (Exception e){
-            try {
-                pgConnection.rollback();
-            }
-            catch (Exception exception){
-                System.err.println(exception);
-            }
+            System.err.println(e);
+            pgConnection.rollback();
         }
         return new ResultObjectTuple(rs, this);
     }
@@ -118,7 +113,13 @@ public class Produto implements OperacoesCrud {
     public void editar(PooledConnection connection) throws SQLException {
         Connection pgConnection = connection.getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
+        if(rs == null){
+            return;
+        }
         rs = selecionaRow(rs, this);
+        if(rs == null){
+            return;
+        }
         this.nome=rs.getString("nome");
         this.descricao=rs.getString("descricao");
         this.preco = rs.getFloat("preco");
@@ -132,48 +133,49 @@ public class Produto implements OperacoesCrud {
     }
 
     @Override
-    public ResultSet procuraRegistro(Connection connection) throws SQLException {
-        System.out.println("Digite o nome do produto");
-        Scanner sc = new Scanner(System.in);
-        String entrada = sc.nextLine();
-        Statement stmt = connection.createStatement();
-        ResultSet rs = null;
-        try {
-            Integer.parseInt(entrada);
-            rs = pesquisa(0, entrada, stmt);
-        }
-        finally {
-            stmt.close();
-            //connection.close();
-        }
-        return rs;
-    }
-
-    @Override
-    public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
-        String query = "SELECT * FROM produto WHERE nome LIKE = '^"+entrada+"';";
-        ResultSet rs = stmt.executeQuery(query);
-        return rs;
-    }
-
-    @Override
     public Integer construirMenu(ResultSet rs, Integer base) throws SQLException {
-        System.out.println("Resultados de pesquisa");
+        System.out.println("\nResultados de pesquisa");
         base+=1;
         int n=0;
         for (n=base;n<=base+9;n++){
             rs.absolute(n);
             System.out.println(String.format("%d) %s - %f", n, rs.getString("nome"), rs.getFloat("preco")));
             n+=1;
+            if(!rs.absolute(n+1)){
+                break;
+            }
         }
-        if(base < rs.getFetchSize()){
+        rs.last();
+        int limite = rs.getRow();
+        if(base < limite && limite > 9){
             System.out.println(".) Proximo");
         }
         if(base > 10){
             System.out.println(",) Anterior");
         }
         System.out.println("q) Voltar");
+        System.out.print("Digite uma opcao: ");
 
         return n;
+    }
+
+    @Override
+    public ResultSet procuraRegistro(Connection connection) throws SQLException {
+        System.out.println("Digite o nome do produto");
+        Scanner sc = new Scanner(System.in);
+        String entrada = sc.nextLine();
+        Statement stmt = connection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_UPDATABLE);
+        ResultSet rs = null;
+        Integer.parseInt(entrada);
+        rs = pesquisa(0, entrada, stmt);
+        return rs;
+    }
+
+    @Override
+    public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
+        String query = "SELECT * FROM produto WHERE nome LIKE '"+entrada+"';";
+        ResultSet rs = stmt.executeQuery(query);
+        return rs;
     }
 }
