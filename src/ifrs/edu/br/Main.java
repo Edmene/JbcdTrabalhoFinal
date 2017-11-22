@@ -2,6 +2,7 @@ package ifrs.edu.br;
 
 import ifrs.edu.br.negocio.Cliente;
 import ifrs.edu.br.negocio.Produto;
+import ifrs.edu.br.venda.Venda;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -42,7 +43,7 @@ public class Main {
                         mostrarMenuVenda();
                     }
                     int op2 = leInt(sc);
-                    subMenus(opInicial, op2, sc, dataSource);
+                    subMenus(opInicial, op2, dataSource);
                 }
             }
         }
@@ -51,10 +52,10 @@ public class Main {
         }
     }
 
-    private static void subMenus(int op, int op2, Scanner sc, PGConnectionPoolDataSource dataSource) throws SQLException{
-        if(op >= 0 && op < 3){
+    private static void subMenus(int op, int op2, PGConnectionPoolDataSource dataSource) throws SQLException{
+        OperacoesCrud opSql = new Cliente();
+        if(op >= 0 && op < 2){
             if(op2 == 0){
-                OperacoesCrud opSql = new Cliente();
                 if (op == 0) {
                     Cliente cli = new Cliente();
                     opSql = cli;
@@ -66,7 +67,6 @@ public class Main {
                 opSql.cadastrar(opSql.conectar(dataSource));
             }
             else {
-                OperacoesCrud opSql = new Cliente();
                 if (op == 0) {
                     Cliente cli = new Cliente();
                     opSql = cli;
@@ -83,12 +83,13 @@ public class Main {
                 }
             }
         }
-        if(op == 3){
+        if(op == 2){
+            opSql = new Venda();
             if(op2 == 0){
-
+                opSql.cadastrar(opSql.conectar(dataSource));
             }
-            if(op2 == 0){
-
+            if(op2 == 1){
+                opSql.editar(opSql.conectar(dataSource));
             }
         }
     }
@@ -107,6 +108,7 @@ public class Main {
     }
 
     private static void mostrarMenu(){
+        System.out.println();
         String[] entradas = {"Cliente","Produto","Venda"};
         iteraEntreStrings(entradas);
     }

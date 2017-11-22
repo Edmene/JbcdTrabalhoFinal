@@ -1,5 +1,6 @@
 package ifrs.edu.br.venda;
 
+import com.sun.org.apache.regexp.internal.RE;
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.ResultObjectTuple;
 import ifrs.edu.br.negocio.Cliente;
@@ -23,6 +24,9 @@ public class Venda implements OperacoesCrud {
         this.cliente = cliente;
         this.date = date;
         this.status = true;
+    }
+
+    public Venda(){
     }
 
     public void cancelarVenda(){
@@ -78,22 +82,23 @@ public class Venda implements OperacoesCrud {
     }
 
     @Override
-    public ResultObjectTuple cadastrar(PooledConnection connection) {
+    public ResultObjectTuple cadastrar(PooledConnection connection) throws SQLException {
         Connection pgConnection = null;
         ResultSet resultSet = null;
         try {
             this.date = java.sql.Date.valueOf(LocalDate.now());
             pgConnection = connection.getConnection();
-            Statement statement = pgConnection.createStatement();
+            Statement statement = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                    ResultSet.CONCUR_UPDATABLE);
             Cliente cli = new Cliente();
             ResultSet rs = cli.procuraRegistro(pgConnection);
             rs = selecionaRow(rs, cli);
             //Primeira Query responsavel pela insersao de uma pessoa
-            statement.executeUpdate("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
-                    " VALUES ("+String.valueOf(rs.getInt("id"))+",'"+
+            statement.execute("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
+                    " VALUES ('"+String.valueOf(rs.getInt("id"))+"','"+
                     this.date+"','"+String.valueOf(0)+"','true') RETURNING *;");
-            resultSet = statement.getResultSet(); //Pegando o retorno da insersao para uso nos iten
-            resultSet.next();
+            resultSet = statement.getResultSet(); //Pegando o retorno da insersao para uso nos itens
+            //resultSet.next();
             //rs.close();
             boolean continuarAdicionarItens = true;
             while (continuarAdicionarItens){
@@ -101,6 +106,9 @@ public class Venda implements OperacoesCrud {
                 Scanner sc = new Scanner(System.in);
                 if(sc.nextInt() == 1){
                     continuarAdicionarItens = false;
+                    if(this.valorTotal <= 0){
+                        pgConnection.rollback();
+                    }
                 }
                 else {
                     ItemVenda item = new ItemVenda();
@@ -122,12 +130,8 @@ public class Venda implements OperacoesCrud {
             pgConnection.commit();
         }
         catch (Exception e){
-            try {
-                pgConnection.rollback();
-            }
-            catch (Exception exception){
-                System.err.println(exception);
-            }
+            pgConnection.rollback();
+            System.err.println(e);
         }
         return new ResultObjectTuple(resultSet, this);
         //cliente = pesquisarCliente();
@@ -164,6 +168,10 @@ public class Venda implements OperacoesCrud {
         pgConnection.close();
         //cancelar venda
         //atualiza no banco
+    }
+
+    public void deletarVendaNula(ResultSet resultSet) throws SQLException {
+        resultSet.deleteRow();
     }
 
     @Override
