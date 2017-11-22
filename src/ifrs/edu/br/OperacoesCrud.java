@@ -10,7 +10,7 @@ import java.sql.Statement;
 import java.util.Scanner;
 
 public interface OperacoesCrud {
-    void cadastrar(PooledConnection connection);
+    ResultObjectTuple cadastrar(PooledConnection connection);
     void editar(PooledConnection connection) throws SQLException;
 
     default void deletar(PooledConnection connection) throws SQLException{

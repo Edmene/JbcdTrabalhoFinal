@@ -1,6 +1,7 @@
 package ifrs.edu.br.negocio;
 
 import ifrs.edu.br.OperacoesCrud;
+import ifrs.edu.br.ResultObjectTuple;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
@@ -61,9 +62,10 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     }
 
     @Override
-    public void cadastrar(PooledConnection connection) {
+    public ResultObjectTuple cadastrar(PooledConnection connection) {
         entradaUsuario(true);
         Connection pgConnection = null;
+        ResultSet rs = null;
         try {
             pgConnection = connection.getConnection();
             Statement statement = pgConnection.createStatement();
@@ -75,9 +77,10 @@ public class Cliente extends Pessoa implements OperacoesCrud {
             //Segunda query responsavel pela insersao de um cliente
             statement.addBatch("INSERT INTO cliente (id, bandeiracc, numerocc)"+
             " VALUES ('SELECT id from pessoa WHERE cpf = \'"+this.getCpf()+"\'','"
-                    +this.bandeiraCC+"','"+this.numeroCC+"')");
+                    +this.bandeiraCC+"','"+this.numeroCC+"') RETURNING *;");
             statement.executeBatch();
             pgConnection.commit();
+            rs = statement.getResultSet();
         }
         catch (Exception e){
             try {
@@ -88,6 +91,7 @@ public class Cliente extends Pessoa implements OperacoesCrud {
             }
 
         }
+        return new ResultObjectTuple(rs,this);
     }
 
     @Override

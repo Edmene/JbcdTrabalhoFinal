@@ -1,6 +1,7 @@
 package ifrs.edu.br.venda;
 
 import ifrs.edu.br.OperacoesCrud;
+import ifrs.edu.br.ResultObjectTuple;
 import ifrs.edu.br.negocio.Cliente;
 
 import javax.sql.PooledConnection;
@@ -78,8 +79,9 @@ public class Venda implements OperacoesCrud {
     }
 
     @Override
-    public void cadastrar(PooledConnection connection) {
+    public ResultObjectTuple cadastrar(PooledConnection connection) {
         Connection pgConnection = null;
+        ResultSet resultSet = null;
         try {
             this.date = java.sql.Date.valueOf(LocalDate.now());
             pgConnection = connection.getConnection();
@@ -91,8 +93,8 @@ public class Venda implements OperacoesCrud {
             statement.executeUpdate("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
                     " VALUES ("+String.valueOf(rs.getInt("id"))+",'"+
                     this.date+"','"+String.valueOf(0)+"','true') RETURNING *;");
-            ResultSet resultSet = statement.getResultSet(); //Pegando o retorno da insersao para uso nos iten
-            rs.close();
+            resultSet = statement.getResultSet(); //Pegando o retorno da insersao para uso nos iten
+            //rs.close();
             boolean continuarAdicionarItens = true;
             while (continuarAdicionarItens){
                 menuItens();
@@ -127,6 +129,7 @@ public class Venda implements OperacoesCrud {
                 System.err.println(exception);
             }
         }
+        return new ResultObjectTuple(resultSet, this);
         //cliente = pesquisarCliente();
         //data = Date;
         //status = true;

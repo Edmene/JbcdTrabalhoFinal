@@ -1,6 +1,7 @@
 package ifrs.edu.br.venda;
 
 import ifrs.edu.br.OperacoesCrud;
+import ifrs.edu.br.ResultObjectTuple;
 import ifrs.edu.br.negocio.Produto;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
@@ -56,12 +57,13 @@ public class ItemVenda implements OperacoesCrud {
     }
 
     @Override
-    public void cadastrar(PooledConnection connection) {
+    public ResultObjectTuple cadastrar(PooledConnection connection) {
         //escolhe um produto
         //popula o valorUnitario com o valor do produto (nao he referencia)
         //pede quantidade
         //cadastra no banco
         //cria relacao entre a venda e item na tabela relacao
+        return null;
     }
 
 
