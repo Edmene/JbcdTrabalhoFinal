@@ -93,13 +93,6 @@ public class Venda implements OperacoesCrud {
             Cliente cli = new Cliente();
             ResultSet rs = cli.procuraRegistro(pgConnection);
             rs = selecionaRow(rs, cli);
-            //Primeira Query responsavel pela insersao de uma pessoa
-            statement.execute("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
-                    " VALUES ('"+String.valueOf(rs.getInt("id"))+"','"+
-                    this.date+"','"+String.valueOf(0)+"','true') RETURNING *;");
-            resultSet = statement.getResultSet(); //Pegando o retorno da insersao para uso nos itens
-            //resultSet.next();
-            //rs.close();
             boolean continuarAdicionarItens = true;
             while (continuarAdicionarItens){
                 menuItens();
@@ -112,22 +105,32 @@ public class Venda implements OperacoesCrud {
                 }
                 else {
                     ItemVenda item = new ItemVenda();
-                    adicionarItem(item.retornaCadastro(connection));
+                    adicionarItem((ItemVenda) item.cadastrar(connection).getObject());
                 }
             }
+            //Primeira Query responsavel pela insersao de uma pessoa
+            statement.execute("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
+                    " VALUES ('"+String.valueOf(rs.getInt("id"))+"','"+
+                    this.date+"','"+this.valorTotal+"','true') RETURNING *;");
+            pgConnection.commit();
+            resultSet = statement.getResultSet(); //Pegando o retorno da insersao para uso nos itens
+            //resultSet.next();
+            //rs.close();
             for (ItemVenda item : listaItens){
                 statement.execute("INSERT INTO lista_venda (lista_item_id, lista_item_prod, venda_item)"+
-                "VALUES ('"+item.getIdBanco()+"','"+item.getProdutoId()+"','"+resultSet.getInt("id")+"')");
+                "VALUES ('"+item.getIdsBanco()[0]+"','"+item.getIdsBanco()[1]+"','"+resultSet.getInt("id")+"')");
             }
-            statement.executeUpdate("UPDATE venda SET valor_total='"+this.valorTotal+"'");
+            pgConnection.commit();
+
             /*
+            statement.executeUpdate("UPDATE venda SET valor_total='"+this.valorTotal+"'");
             //Segunda query responsavel pela insersao de um cliente
             statement.addBatch("INSERT INTO cliente (id, bandeiracc, numerocc)"+
                     " VALUES ('SELECT id from pessoa WHERE cpf = \'"+this.getCpf()+"\'','"
                     +this.bandeiraCC+"','"+this.numeroCC+"')");
             */
             //statement.executeBatch();
-            pgConnection.commit();
+
         }
         catch (Exception e){
             pgConnection.rollback();
@@ -145,7 +148,21 @@ public class Venda implements OperacoesCrud {
     public void editar(PooledConnection connection) throws SQLException {
         Connection pgConnection = connection.getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
+        if(rs == null){
+            return;
+        }
+        int rowInicial = rs.getRow();
+        rs.last();
+        if(rowInicial == rs.getRow()){
+            return;
+        }
+        else {
+            rs.first();
+        }
         rs = selecionaRow(rs, this);
+        if(rs == null){
+            return;
+        }
         ItemVenda itens = new ItemVenda();
         Statement stmt = pgConnection.createStatement();
         itens.operacoesListaDeVenda(rs.getInt("id"), connection);
@@ -170,9 +187,11 @@ public class Venda implements OperacoesCrud {
         //atualiza no banco
     }
 
+    /*
     public void deletarVendaNula(ResultSet resultSet) throws SQLException {
         resultSet.deleteRow();
     }
+    */
 
     @Override
     public ResultSet procuraRegistro(Connection connection) throws SQLException {

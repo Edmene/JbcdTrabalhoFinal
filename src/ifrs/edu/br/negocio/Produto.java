@@ -23,6 +23,12 @@ public class Produto implements OperacoesCrud {
 
     public Produto(){}
 
+    public Produto(ResultSet resultSet) throws SQLException{
+        this.nome = resultSet.getString("nome");
+        this.descricao = resultSet.getString("descricao");
+        this.preco = resultSet.getFloat("preco");
+    }
+
     public String getNome() {
         return nome;
     }
