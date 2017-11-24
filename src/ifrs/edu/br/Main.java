@@ -74,7 +74,7 @@ public class Main {
         if (op2 == 2) {
             opSql.deletar(opSql.conectar(dataSource));
         }
-        System.out.println("test");
+        System.out.println("teste");
     }
 
 
