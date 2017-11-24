@@ -40,7 +40,7 @@ public class Main {
                     }
                     if(opInicial == 2){
                         System.out.println("\nVenda");
-                        mostrarMenuVenda();
+                        mostrarMenuTipo2();
                     }
                     int op2 = leInt(sc);
                     subMenus(opInicial, op2, dataSource);
@@ -54,45 +54,29 @@ public class Main {
 
     private static void subMenus(int op, int op2, PGConnectionPoolDataSource dataSource) throws SQLException{
         OperacoesCrud opSql = new Cliente();
-        if(op >= 0 && op < 2){
-            if(op2 == 0){
-                if (op == 0) {
-                    Cliente cli = new Cliente();
-                    opSql = cli;
-                }
-                if (op == 1) {
-                    Produto prod = new Produto();
-                    opSql = prod;
-                }
-                opSql.cadastrar(opSql.conectar(dataSource));
-            }
-            else {
-                if (op == 0) {
-                    Cliente cli = new Cliente();
-                    opSql = cli;
-                }
-                if (op == 1) {
-                    Produto prod = new Produto();
-                    opSql = prod;
-                }
-                if (op2 == 1) {
-                    opSql.editar(opSql.conectar(dataSource));
-                }
-                if (op2 == 2) {
-                    opSql.deletar(opSql.conectar(dataSource));
-                }
-            }
+
+        if (op == 0) {
+            opSql = new Cliente();
+        }
+        if (op == 1) {
+            opSql = new Produto();
         }
         if(op == 2){
             opSql = new Venda();
-            if(op2 == 0){
-                opSql.cadastrar(opSql.conectar(dataSource));
-            }
-            if(op2 == 1){
-                opSql.editar(opSql.conectar(dataSource));
-            }
         }
+
+        if(op2 == 0) {
+            opSql.cadastrar(opSql.conectar(dataSource));
+        }
+        if (op2 == 1) {
+            opSql.editar(opSql.conectar(dataSource));
+        }
+        if (op2 == 2) {
+            opSql.deletar(opSql.conectar(dataSource));
+        }
+        System.out.println("test");
     }
+
 
     private static int leInt(Scanner sc){
         int inteiro = sc.nextInt();
@@ -118,9 +102,5 @@ public class Main {
         iteraEntreStrings(entradas);
     }
 
-    private static void mostrarMenuVenda(){
-        String[] entradas = {"Iniciar","Pesquisar"};
-        iteraEntreStrings(entradas);
-    }
 }
 
