@@ -1,6 +1,6 @@
 package ifrs.edu.br;
 
-import ifrs.edu.br.negocio.Cliente;
+
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;

@@ -1,11 +1,8 @@
 package ifrs.edu.br.venda;
 
-import com.sun.org.apache.regexp.internal.RE;
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.ResultObjectTuple;
 import ifrs.edu.br.negocio.Produto;
-import org.postgresql.ds.PGConnectionPoolDataSource;
-import org.postgresql.ds.PGPooledConnection;
 
 import javax.sql.PooledConnection;
 import java.sql.*;
@@ -52,13 +49,18 @@ public class ItemVenda implements OperacoesCrud {
         this.valorUnitario = valorUnitario;
     }
 
-    public void operacoesListaDeVenda(Integer vendaId, PooledConnection connection) throws SQLException{
+    public void operacoesListaDeVenda(Integer vendaId, PooledConnection connection, Boolean op) throws SQLException{
         try(ResultSet rs = pesquisa(0,String.valueOf(vendaId),connection.getConnection().createStatement(
                 ResultSet.TYPE_SCROLL_SENSITIVE,
                 ResultSet.CONCUR_UPDATABLE))){
             this.itensAssociadosAVenda = rs;
             this.connection = connection.getConnection();
-            editar(connection);
+            if(op) {
+                editar(connection);
+            }
+            else {
+                deletar(connection);
+            }
         }
     }
 
@@ -196,6 +198,50 @@ public class ItemVenda implements OperacoesCrud {
 
     @Override
     public void deletar(PooledConnection connection) throws SQLException{
+        ResultSet rs = null;
+        Connection pgConnection = connection.getConnection();
+        if(this.itensAssociadosAVenda == null){
+            return;
+        }
+        int rowInicial = this.itensAssociadosAVenda.getRow();
+        this.itensAssociadosAVenda.last();
+        if(rowInicial == this.itensAssociadosAVenda.getRow()){
+            return;
+        }
+        else {
+            this.itensAssociadosAVenda.first();
+        }
+        rs = selecionaRow(this.itensAssociadosAVenda, this);
+        if(rs == null){
+            return;
+        }
+        PreparedStatement pStatement = pgConnection.prepareStatement("DELETE FROM item_venda WHERE id = ?");
+        PreparedStatement pStatementLista = pgConnection.prepareStatement("DELETE FROM lista_venda WHERE " +
+                "lista_item_id = ?");
+        pStatement.setInt(1, rs.getInt("lista_item_id"));
+        pStatementLista.setInt(1, rs.getInt("lista_item_id"));
+
+        pStatement.execute();
+        pStatementLista.execute();
+        pgConnection.commit();
+
+        Statement statement = pgConnection.createStatement();
+        ResultSet totalValor = statement.executeQuery("SELECT SUM(preco) AS total FROM item_venda CROSS JOIN lista_venda" +
+                " WHERE item.venda = lista_venda.lista_item_id AND venda_item = '"+rs.getInt("venda_item")+"';");
+        PreparedStatement pStatementVenda = pgConnection.prepareStatement("UPDATE venda" +
+                " SET valor_total = ? WHERE id = ?");
+        pStatementVenda.setFloat(1, totalValor.getFloat("total"));
+        pStatementVenda.setInt(2, rs.getInt("venda_item"));
+        pStatementVenda.execute();
+
+        pgConnection.commit();
+        pStatement.close();
+        pStatementLista.close();
+        pStatementVenda.close();
+        rs.close();
+        totalValor.close();
+        pgConnection.close();
+
         //remove linha da tabela relacao
         //recalcula total da venda
     }
@@ -222,7 +268,8 @@ public class ItemVenda implements OperacoesCrud {
         for (n=base;n<=base+9;n++){
             rs.absolute(n);
             Statement statement = this.connection.createStatement();
-            ResultSet produto = statement.executeQuery("SELECT nome FROM produto WHERE id = '"+this.itensAssociadosAVenda.getInt("venda_item")+"'");
+            ResultSet produto = statement.executeQuery("SELECT nome FROM produto WHERE id = '"
+                    +this.itensAssociadosAVenda.getInt("venda_item")+"'");
             System.out.println(String.format("%d) %s - %f", n, produto.getString("nome"),
                     rs.getFloat("preco")));
             n+=1;

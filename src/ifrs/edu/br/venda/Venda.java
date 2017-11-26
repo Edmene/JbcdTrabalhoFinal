@@ -1,6 +1,6 @@
 package ifrs.edu.br.venda;
 
-import com.sun.org.apache.regexp.internal.RE;
+
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.ResultObjectTuple;
 import ifrs.edu.br.negocio.Cliente;
@@ -164,8 +164,10 @@ public class Venda implements OperacoesCrud {
             return;
         }
         ItemVenda itens = new ItemVenda();
-        Statement stmt = pgConnection.createStatement();
-        itens.operacoesListaDeVenda(rs.getInt("id"), connection);
+        Scanner sc = new Scanner(System.in);
+        menuItens();
+        String op = sc.nextLine();
+        itens.operacoesListaDeVenda(rs.getInt("id"), connection, op.contains("0"));
         //this = pesquisa compra;
         //lista os items
         //pede para remover itens ou alterar quantidade
@@ -240,6 +242,13 @@ public class Venda implements OperacoesCrud {
         System.out.println("q) Voltar");
 
         return n;
+    }
+
+    private void editarMenu(){
+        System.out.println("Operacao");
+        System.out.println("0)Editar item");
+        System.out.println("1)Remover item");
+        System.out.print("Op: ");
     }
 
 }
