@@ -11,15 +11,38 @@ import java.sql.Statement;
 import java.util.Scanner;
 
 public interface OperacoesCrud {
-    ResultObjectTuple cadastrar(PooledConnection connection) throws SQLException;
-    void editar(PooledConnection connection) throws SQLException;
+    ResultObjectTuple cadastrar(PGConnectionPoolDataSource dataSource) throws SQLException;
+    void editar(PGConnectionPoolDataSource dataSource) throws SQLException;
 
-    default void deletar(PooledConnection connection) throws SQLException{
-        Connection pgConnection = connection.getConnection();
+    default void listar(PGConnectionPoolDataSource dataSource) throws SQLException{
+        Connection pgConnection = conectar(dataSource).getConnection();
+        Statement stm = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_UPDATABLE);
+        ResultSet rs = pesquisa(3,null,stm);
+        if(rs == null){
+            return;
+        }
+        int rowInicial = rs.getRow();
+        rs.last();
+        if(rowInicial == rs.getRow()){
+            System.out.println("Nenhum registro encontrado");
+        }
+        else {
+            rs.first();
+            selecionaRow(rs, this);
+            stm.close();
+            pgConnection.close();
+        }
+    }
+
+    default void deletar(PGConnectionPoolDataSource dataSource) throws SQLException{
+        Connection pgConnection = conectar(dataSource).getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
         rs = selecionaRow(rs, this);
-        rs.deleteRow();
-        pgConnection.commit();
+        if(rs != null) {
+            rs.deleteRow();
+            pgConnection.commit();
+        }
         rs.close();
         pgConnection.close();
     }

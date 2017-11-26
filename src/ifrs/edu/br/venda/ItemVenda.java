@@ -3,9 +3,11 @@ package ifrs.edu.br.venda;
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.ResultObjectTuple;
 import ifrs.edu.br.negocio.Produto;
+import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
 import java.sql.*;
+import java.text.DecimalFormat;
 import java.util.Scanner;
 
 public class ItemVenda implements OperacoesCrud {
@@ -25,8 +27,10 @@ public class ItemVenda implements OperacoesCrud {
     }
 
     public int getProduto(Connection connection) throws SQLException {
-        return connection.createStatement().executeQuery("SELECT * FROM produto " +
-                "WHERE nome = '"+this.produto.getNome()+"'").getInt("id");
+        ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM produto" +
+                " WHERE nome = '"+this.produto.getNome()+"'");
+        rs.next();
+        return rs.getInt("id");
     }
 
     public void setProduto(Produto produto) {
@@ -49,33 +53,33 @@ public class ItemVenda implements OperacoesCrud {
         this.valorUnitario = valorUnitario;
     }
 
-    public void operacoesListaDeVenda(Integer vendaId, PooledConnection connection, Boolean op) throws SQLException{
-        try(ResultSet rs = pesquisa(0,String.valueOf(vendaId),connection.getConnection().createStatement(
+    public void operacoesListaDeVenda(Integer vendaId, PGConnectionPoolDataSource dataSource, Boolean op) throws SQLException{
+        try(ResultSet rs = pesquisa(0,String.valueOf(vendaId),conectar(dataSource).getConnection().createStatement(
                 ResultSet.TYPE_SCROLL_SENSITIVE,
                 ResultSet.CONCUR_UPDATABLE))){
             this.itensAssociadosAVenda = rs;
-            this.connection = connection.getConnection();
+            this.connection = conectar(dataSource).getConnection();
             if(op) {
-                editar(connection);
+                editar(dataSource);
             }
             else {
-                deletar(connection);
+                deletar(dataSource);
             }
         }
     }
 
-    private void entradaUsuario(boolean todasAsEntradas) throws SQLException{
+    private void entradaUsuario(boolean todasAsEntradas, Connection connection) throws SQLException{
         Scanner sc = new Scanner(System.in);
-        System.out.print("Digite a quantidade: ");
         if(!todasAsEntradas){
             String tmp = sc.nextLine();
             if (tmp.length() != 0){
-                setProduto();
+                setProduto(connection);
             }
         }
         else {
-            setProduto();
+            setProduto(connection);
         }
+        System.out.print("Digite a quantidade: ");
         if(!todasAsEntradas){
             String tmp = sc.nextLine();
             if (tmp.length() != 0){
@@ -87,9 +91,9 @@ public class ItemVenda implements OperacoesCrud {
         }
     }
 
-    private void setProduto() throws SQLException{
+    private void setProduto(Connection connection) throws SQLException{
         Produto prod = new Produto();
-        ResultSet rs = prod.procuraRegistro(this.connection);
+        ResultSet rs = prod.procuraRegistro(connection);
         rs = prod.selecionaRow(rs, prod);
         this.produto = new Produto(rs);
         this.setValorUnitario(rs.getFloat("preco"));
@@ -103,21 +107,21 @@ public class ItemVenda implements OperacoesCrud {
     }
 
     @Override
-    public ResultObjectTuple cadastrar(PooledConnection connection) throws SQLException {
-        Connection pgConnection = connection.getConnection();
+    public ResultObjectTuple cadastrar(PGConnectionPoolDataSource dataSource) throws SQLException {
+        Connection pgConnection = conectar(dataSource).getConnection();
         Statement statement = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
             ResultSet.CONCUR_UPDATABLE);
-        System.out.println("Informe a quantidade do item");
-        Scanner sc = new Scanner(System.in);
-        entradaUsuario(true);
-        statement.execute("INSERT INTO item_venda (fk_item_produto, preco)" +
-                "VALUES ('"+this.getProduto(pgConnection)+"','"+this.valorUnitario+"') RETURNING *");
+        entradaUsuario(true, pgConnection);
+        statement.execute("INSERT INTO item_venda (fk_item_produto, preco, quantidade)" +
+                "VALUES ('"+this.getProduto(pgConnection)+"','"+this.valorUnitario+"'," +
+                "'"+this.quantidade+"') RETURNING *");
         //escolhe um produto
         //popula o valorUnitario com o valor do produto (nao he referencia)
         //pede quantidade
         //cadastra no banco
         pgConnection.commit();
         ResultSet rs = statement.getResultSet();
+        rs.next();
         int[] ids = {rs.getInt("id"), this.getProduto(pgConnection)};
         this.ids = ids;
         return new ResultObjectTuple(rs, this);
@@ -129,9 +133,9 @@ public class ItemVenda implements OperacoesCrud {
     }
 
     @Override
-    public void editar(PooledConnection connection) throws SQLException {
+    public void editar(PGConnectionPoolDataSource dataSource) throws SQLException {
         ResultSet rs = null;
-        Connection pgConnection = connection.getConnection();
+        Connection pgConnection = conectar(dataSource).getConnection();
         if(this.itensAssociadosAVenda == null){
             return;
         }
@@ -157,16 +161,17 @@ public class ItemVenda implements OperacoesCrud {
         this.quantidade = resultSet.getInt("quantidade");
         this.valorUnitario = resultSet.getFloat("preco");
 
-        entradaUsuario(true);
+        entradaUsuario(false, pgConnection);
 
-        PreparedStatement pStatementItem = pgConnection.prepareStatement("UPDATE item_venda SET fk_item_produto = ?, preco = ?"+
-                " WHERE id = ?");
+        PreparedStatement pStatementItem = pgConnection.prepareStatement("UPDATE item_venda SET fk_item_produto = ?," +
+                " preco = ?, quantidade = ? WHERE id = ?");
         PreparedStatement pStatementItemAssoc = pgConnection.prepareStatement("UPDATE lista_venda set lista_item_id = ?," +
                 " lista_item_prod = ?, venda_item = ? WHERE id = ?");
 
         pStatementItem.setInt(1, this.getProduto(pgConnection));
         pStatementItem.setFloat(2, this.valorUnitario);
-        pStatementItem.setInt(3, resultSet.getInt("id"));
+        pStatementItem.setFloat(3, this.quantidade);
+        pStatementItem.setInt(4, resultSet.getInt("id"));
 
         pStatementItemAssoc.setInt(1, resultSet.getInt("id"));
         pStatementItemAssoc.setInt(2, this.getProduto(pgConnection));
@@ -176,7 +181,7 @@ public class ItemVenda implements OperacoesCrud {
         pStatementItem.execute();
         pStatementItemAssoc.execute();
 
-        ResultSet totalValor = statement.executeQuery("SELECT SUM(preco) AS total FROM item_venda CROSS JOIN lista_venda" +
+        ResultSet totalValor = statement.executeQuery("SELECT SUM(preco*quantidade) AS total FROM item_venda CROSS JOIN lista_venda" +
                 " WHERE item.venda = lista_venda.lista_item_id AND venda_item = '"+rs.getInt("venda_item")+"';");
         PreparedStatement pStatementVenda = pgConnection.prepareStatement("UPDATE venda" +
                 " SET valor_total = ? WHERE id = ?");
@@ -197,9 +202,9 @@ public class ItemVenda implements OperacoesCrud {
     }
 
     @Override
-    public void deletar(PooledConnection connection) throws SQLException{
+    public void deletar(PGConnectionPoolDataSource dataSource) throws SQLException{
         ResultSet rs = null;
-        Connection pgConnection = connection.getConnection();
+        Connection pgConnection = conectar(dataSource).getConnection();
         if(this.itensAssociadosAVenda == null){
             return;
         }
@@ -254,8 +259,10 @@ public class ItemVenda implements OperacoesCrud {
     @Override
     public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
         String[] entradaTratada = entrada.split(";");
-        String query = "SELECT * FROM lista_venda "+
-                "WHERE venda_item = '"+entradaTratada[0]+"';";
+        String query = "SELECT * FROM lista_venda ";
+        if(tipo != 3) {
+            query+="WHERE venda_item = '" + entradaTratada[0] + "';";
+        }
         ResultSet rs = stmt.executeQuery(query);
         return rs;
     }
@@ -269,12 +276,19 @@ public class ItemVenda implements OperacoesCrud {
             rs.absolute(n);
             Statement statement = this.connection.createStatement();
             ResultSet produto = statement.executeQuery("SELECT nome FROM produto WHERE id = '"
-                    +this.itensAssociadosAVenda.getInt("venda_item")+"'");
-            System.out.println(String.format("%d) %s - %f", n, produto.getString("nome"),
-                    rs.getFloat("preco")));
-            n+=1;
+                    +this.itensAssociadosAVenda.getInt("lista_item_prod")+"'");
+            DecimalFormat df = new DecimalFormat("0.00##");
+            produto.first();
+            String preco = df.format(produto.getFloat("preco"));
+            System.out.println(String.format("%d) %s - %s", n, produto.getString("nome"),
+                    preco));
+            if(!rs.absolute(n+1)){
+                break;
+            }
         }
-        if(base < rs.getFetchSize()){
+        rs.last();
+        int limite = rs.getRow();
+        if(base < limite && limite-base > 9){
             System.out.println(".) Proximo");
         }
         if(base > 10){

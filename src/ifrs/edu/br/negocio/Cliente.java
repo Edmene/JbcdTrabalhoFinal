@@ -2,6 +2,7 @@ package ifrs.edu.br.negocio;
 
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.ResultObjectTuple;
+import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
 import java.sql.*;
@@ -60,12 +61,12 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     }
 
     @Override
-    public ResultObjectTuple cadastrar(PooledConnection connection) throws SQLException {
+    public ResultObjectTuple cadastrar(PGConnectionPoolDataSource dataSource) throws SQLException {
         entradaUsuario(true);
         Connection pgConnection = null;
         ResultSet rs = null;
         try {
-            pgConnection = connection.getConnection();
+            pgConnection = conectar(dataSource).getConnection();
             Statement statement = pgConnection.createStatement();
             statement.execute("INSERT INTO pessoa (cpf, nome, sobrenome)" +
                     " VALUES ('"+this.getCpf().toString()+"','"+this.getNome()+"','"+this.getSobrenome()+"');");
@@ -90,8 +91,8 @@ public class Cliente extends Pessoa implements OperacoesCrud {
     }
 
     @Override
-    public void editar(PooledConnection connection) throws SQLException {
-        Connection pgConnection = connection.getConnection();
+    public void editar(PGConnectionPoolDataSource dataSource) throws SQLException {
+        Connection pgConnection = conectar(dataSource).getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
         if(rs == null){
             return;
@@ -145,6 +146,24 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         pgConnection.close();
     }
 
+
+    @Override
+    public void deletar(PGConnectionPoolDataSource dataSource) throws SQLException{
+        Connection pgConnection = conectar(dataSource).getConnection();
+        ResultSet rs = procuraRegistro(pgConnection);
+        rs = selecionaRow(rs, this);
+
+        PreparedStatement pStatementPessoa = pgConnection.prepareStatement("DELETE FROM pessoa WHERE id = ?");
+        pStatementPessoa.setInt(1, rs.getInt("id"));
+
+        rs.deleteRow();
+        pStatementPessoa.execute();
+
+        pgConnection.commit();
+        rs.close();
+        pgConnection.close();
+    }
+
     @Override
     public Integer construirMenu(ResultSet rs, Integer base) throws SQLException {
         System.out.println("\nResultados de pesquisa");
@@ -161,7 +180,7 @@ public class Cliente extends Pessoa implements OperacoesCrud {
         }
         rs.last();
         int limite = rs.getRow();
-        if(base < limite && limite > 9){
+        if(base < limite && limite-base > 9){
             System.out.println(".) Proximo");
         }
         if(base > 10){
@@ -199,8 +218,10 @@ public class Cliente extends Pessoa implements OperacoesCrud {
                     "WHERE cpf = '"+entrada+"';";
         }
         else {
-            query = "SELECT * FROM cliente INNER JOIN pessoa ON (cliente.id = pessoa.id)"+
-                    "WHERE nome LIKE '"+entrada+"';";
+            query = "SELECT * FROM cliente INNER JOIN pessoa ON (cliente.id = pessoa.id)";
+            if(tipo != 3) {
+                query+="WHERE nome LIKE '" + entrada + "%';";
+            }
         }
         ResultSet rs = stmt.executeQuery(query);
         return rs;

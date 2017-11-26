@@ -2,12 +2,14 @@ package ifrs.edu.br.negocio;
 
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.ResultObjectTuple;
+import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.DecimalFormat;
 import java.util.Scanner;
 
 public class Produto implements OperacoesCrud {
@@ -94,12 +96,12 @@ public class Produto implements OperacoesCrud {
     }
 
     @Override
-    public ResultObjectTuple cadastrar(PooledConnection connection) throws SQLException {
+    public ResultObjectTuple cadastrar(PGConnectionPoolDataSource dataSource) throws SQLException {
         entradaUsuario(true);
         Connection pgConnection = null;
         ResultSet rs = null;
         try {
-            pgConnection = connection.getConnection();
+            pgConnection = conectar(dataSource).getConnection();
             Statement statement = pgConnection.createStatement();
             //Query responsavel pela insersao de um produto
             statement.execute("INSERT INTO produto (nome, descricao, preco)" +
@@ -116,16 +118,36 @@ public class Produto implements OperacoesCrud {
     }
 
     @Override
-    public void editar(PooledConnection connection) throws SQLException {
-        Connection pgConnection = connection.getConnection();
+    public void editar(PGConnectionPoolDataSource dataSource) throws SQLException {
+        Connection pgConnection = conectar(dataSource).getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
+        /*
+        if(rs.getRow() == 0){
+            return;
+        }
+        System.out.println();
+        rs = selecionaRow(rs, this);
+        if(rs.getRow() == 0){
+            return;
+        }
+        */
+
         if(rs == null){
             return;
+        }
+        int rowInicial = rs.getRow();
+        rs.last();
+        if(rowInicial == rs.getRow()){
+            return;
+        }
+        else {
+            rs.first();
         }
         rs = selecionaRow(rs, this);
         if(rs == null){
             return;
         }
+
         this.nome=rs.getString("nome");
         this.descricao=rs.getString("descricao");
         this.preco = rs.getFloat("preco");
@@ -133,8 +155,9 @@ public class Produto implements OperacoesCrud {
         rs.updateString("nome", this.nome);
         rs.updateString("descricao", this.descricao);
         rs.updateFloat("preco", this.preco);
-        pgConnection.commit();
+        rs.updateRow();
         rs.close();
+        pgConnection.commit();
         pgConnection.close();
     }
 
@@ -145,15 +168,16 @@ public class Produto implements OperacoesCrud {
         int n=0;
         for (n=base;n<=base+9;n++){
             rs.absolute(n);
-            System.out.println(String.format("%d) %s - %f", n, rs.getString("nome"), rs.getFloat("preco")));
-            n+=1;
+            DecimalFormat df = new DecimalFormat("0.00##");
+            String preco = df.format(rs.getFloat("preco"));
+            System.out.println(String.format("%d) %s - %s", n, rs.getString("nome"), preco));
             if(!rs.absolute(n+1)){
                 break;
             }
         }
         rs.last();
         int limite = rs.getRow();
-        if(base < limite && limite > 9){
+        if(base < limite && limite-base > 9){
             System.out.println(".) Proximo");
         }
         if(base > 10){
@@ -173,14 +197,16 @@ public class Produto implements OperacoesCrud {
         Statement stmt = connection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
                 ResultSet.CONCUR_UPDATABLE);
         ResultSet rs = null;
-        Integer.parseInt(entrada);
         rs = pesquisa(0, entrada, stmt);
         return rs;
     }
 
     @Override
     public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
-        String query = "SELECT * FROM produto WHERE nome LIKE '"+entrada+"';";
+        String query = "SELECT * FROM produto";
+        if (tipo != 3){
+            query+=" WHERE nome LIKE '"+entrada+"%';";
+        }
         ResultSet rs = stmt.executeQuery(query);
         return rs;
     }

@@ -4,6 +4,7 @@ package ifrs.edu.br.venda;
 import ifrs.edu.br.OperacoesCrud;
 import ifrs.edu.br.ResultObjectTuple;
 import ifrs.edu.br.negocio.Cliente;
+import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
 import java.sql.*;
@@ -39,7 +40,7 @@ public class Venda implements OperacoesCrud {
                 this.listaItens.add(item);
                 float total = 0;
                 for (ItemVenda listaIten : listaItens) {
-                    total += listaIten.getValorUnitario();
+                    total += listaIten.getValorUnitario()*listaIten.getQuantidade();
                 }
                 this.valorTotal = total;
             }
@@ -69,9 +70,17 @@ public class Venda implements OperacoesCrud {
     }
 
     private void menuItens(){
-        System.out.println("Selecione uma acao");
+        System.out.println("\nSelecione uma acao");
         System.out.println("0) Adicionar");
         System.out.println("1) Finalizar compra");
+        System.out.print("Op: ");
+    }
+
+    private void menuAlteraItens(){
+        System.out.println("\nSelecione uma acao");
+        System.out.println("0) Editar");
+        System.out.println("1) Remover");
+        System.out.println("2) Finalizar alteracoes");
         System.out.print("Op: ");
     }
 
@@ -82,16 +91,25 @@ public class Venda implements OperacoesCrud {
     }
 
     @Override
-    public ResultObjectTuple cadastrar(PooledConnection connection) throws SQLException {
-        Connection pgConnection = null;
+    public ResultObjectTuple cadastrar(PGConnectionPoolDataSource dataSource) throws SQLException {
+        Connection pgConnection = conectar(dataSource).getConnection();
         ResultSet resultSet = null;
+        Savepoint savepoint = null;
         try {
             this.date = java.sql.Date.valueOf(LocalDate.now());
-            pgConnection = connection.getConnection();
             Statement statement = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
                     ResultSet.CONCUR_UPDATABLE);
             Cliente cli = new Cliente();
             ResultSet rs = cli.procuraRegistro(pgConnection);
+            int rowInicial = rs.getRow();
+            rs.last();
+            if(rowInicial == rs.getRow()){
+                System.out.println("Nenhum registro encontrado");
+                return new ResultObjectTuple();
+            }
+            else {
+                rs.first();
+            }
             rs = selecionaRow(rs, cli);
             boolean continuarAdicionarItens = true;
             while (continuarAdicionarItens){
@@ -105,24 +123,31 @@ public class Venda implements OperacoesCrud {
                 }
                 else {
                     ItemVenda item = new ItemVenda();
-                    adicionarItem((ItemVenda) item.cadastrar(connection).getObject());
+                    item = (ItemVenda) item.cadastrar(dataSource).getObject();
+                    if(!listaItens.contains(item)){
+                        adicionarItem(item);
+                    }
                 }
             }
+            savepoint = pgConnection.setSavepoint();
             //Primeira Query responsavel pela insersao de uma pessoa
-            statement.execute("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
-                    " VALUES ('"+String.valueOf(rs.getInt("id"))+"','"+
+            Statement venda = pgConnection.createStatement();
+            venda.execute("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
+                " VALUES ('"+String.valueOf(rs.getInt("id"))+"','"+
                     this.date+"','"+this.valorTotal+"','true') RETURNING *;");
-            pgConnection.commit();
-            resultSet = statement.getResultSet(); //Pegando o retorno da insersao para uso nos itens
+            resultSet = venda.getResultSet(); //Pegando o retorno da insersao para uso nos itens
+            resultSet.next();
+            int venda_id = resultSet.getInt("id");
             //resultSet.next();
             //rs.close();
             for (ItemVenda item : listaItens){
                 statement.execute("INSERT INTO lista_venda (lista_item_id, lista_item_prod, venda_item)"+
-                "VALUES ('"+item.getIdsBanco()[0]+"','"+item.getIdsBanco()[1]+"','"+resultSet.getInt("id")+"')");
+                "VALUES ('"+item.getIdsBanco()[0]+"','"+item.getIdsBanco()[1]+"','"+venda_id+"')");
             }
+            resultSet.close();
             pgConnection.commit();
 
-            /*
+            /* resultSet.getInt("id")
             statement.executeUpdate("UPDATE venda SET valor_total='"+this.valorTotal+"'");
             //Segunda query responsavel pela insersao de um cliente
             statement.addBatch("INSERT INTO cliente (id, bandeiracc, numerocc)"+
@@ -133,7 +158,7 @@ public class Venda implements OperacoesCrud {
 
         }
         catch (Exception e){
-            pgConnection.rollback();
+            pgConnection.rollback(savepoint);
             System.err.println(e);
         }
         return new ResultObjectTuple(resultSet, this);
@@ -145,8 +170,8 @@ public class Venda implements OperacoesCrud {
     }
 
     @Override
-    public void editar(PooledConnection connection) throws SQLException {
-        Connection pgConnection = connection.getConnection();
+    public void editar(PGConnectionPoolDataSource dataSource) throws SQLException {
+        Connection pgConnection = conectar(dataSource).getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
         if(rs == null){
             return;
@@ -165,9 +190,16 @@ public class Venda implements OperacoesCrud {
         }
         ItemVenda itens = new ItemVenda();
         Scanner sc = new Scanner(System.in);
-        menuItens();
-        String op = sc.nextLine();
-        itens.operacoesListaDeVenda(rs.getInt("id"), connection, op.contains("0"));
+        while (true) {
+            menuAlteraItens();
+            String op = sc.nextLine();
+            if(op != "2") {
+                itens.operacoesListaDeVenda(rs.getInt("id"), dataSource, op.contains("0"));
+            }
+            else {
+                break;
+            }
+        }
         //this = pesquisa compra;
         //lista os items
         //pede para remover itens ou alterar quantidade
@@ -177,8 +209,8 @@ public class Venda implements OperacoesCrud {
     }
 
     @Override
-    public void deletar(PooledConnection connection) throws SQLException {
-        Connection pgConnection = connection.getConnection();
+    public void deletar(PGConnectionPoolDataSource dataSource) throws SQLException {
+        Connection pgConnection = conectar(dataSource).getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
         rs = selecionaRow(rs, this);
         rs.updateBoolean("status", false);
@@ -197,27 +229,28 @@ public class Venda implements OperacoesCrud {
 
     @Override
     public ResultSet procuraRegistro(Connection connection) throws SQLException {
-        System.out.println("Digite o cpf do cliente");
+        System.out.println("Digite o nome ou cpf do cliente");
         Scanner sc = new Scanner(System.in);
         String entrada = sc.nextLine();
-        System.out.println("Digite a data da compra");
-        entrada += ";"+sc.nextLine();
-        Statement stmt = connection.createStatement();
+        Statement stmt = connection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_UPDATABLE);
         ResultSet rs = null;
-        try {
-            rs = pesquisa(0, entrada, stmt);
-        }
-        finally {
-            stmt.close();
-        }
+        rs = pesquisa(0, entrada, stmt);
         return rs;
     }
 
     @Override
     public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
-        String[] entradaTratada = entrada.split(";");
-        String query = "SELECT * FROM venda INNER JOIN pessoas ON (venda.cliente_id = pessoas.id)"+
-                "WHERE cpf = '"+entradaTratada[0]+"' AND data = '"+entradaTratada[1]+"';";
+        String query = "SELECT * FROM venda INNER JOIN pessoa ON (venda.venda_cliente = pessoa.id)";
+        if(tipo != 3) {
+            try{
+                int test = Integer.parseInt(entrada);
+                query+=" WHERE cpf = '" + entrada+"';";
+            }
+            catch (NumberFormatException e){
+                query+="WHERE nome LIKE '" + entrada + "%';";
+            }
+        }
         ResultSet rs = stmt.executeQuery(query);
         return rs;
     }
@@ -229,11 +262,18 @@ public class Venda implements OperacoesCrud {
         int n=0;
         for (n=base;n<=base+9;n++){
             rs.absolute(n);
-            System.out.println(String.format("%d) %s - %f - %s", n, rs.getString("nome"),
-                    rs.getFloat("valor_total"), String.valueOf(rs.getDate("data"))));
-            n+=1;
+            DecimalFormat df = new DecimalFormat("0.00##");
+            String total = df.format(rs.getFloat("valor_total"));
+            System.out.println(String.format("%d) %s - %s - %s", n, rs.getString("nome"),
+                    total, String.valueOf(rs.getDate("data"))));
+
+            if(!rs.absolute(n+1)){
+                break;
+            }
         }
-        if(base < rs.getFetchSize()){
+        rs.last();
+        int limite = rs.getRow();
+        if(base < limite && limite-base > 9){
             System.out.println(".) Proximo");
         }
         if(base > 10){
@@ -242,13 +282,6 @@ public class Venda implements OperacoesCrud {
         System.out.println("q) Voltar");
 
         return n;
-    }
-
-    private void editarMenu(){
-        System.out.println("Operacao");
-        System.out.println("0)Editar item");
-        System.out.println("1)Remover item");
-        System.out.print("Op: ");
     }
 
 }

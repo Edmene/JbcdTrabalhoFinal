@@ -18,9 +18,9 @@ public class Main {
             ResultSet rs = null;
             dataSource.setDatabaseName("jdbc_work");
             dataSource.setServerName("192.168.1.3");
-            dataSource.setPassword("JdbcWorkIfrs2017");
+            dataSource.setPassword("CreaAuzen64");
             dataSource.setPortNumber(5432);
-            dataSource.setUser("ifrs2017ads");
+            dataSource.setUser("postgres");
 
             boolean continuar = true;
             while(continuar){
@@ -55,24 +55,29 @@ public class Main {
     private static void subMenus(int op, int op2, PGConnectionPoolDataSource dataSource) throws SQLException{
         OperacoesCrud opSql = new Cliente();
 
-        if (op == 0) {
-            opSql = new Cliente();
-        }
-        if (op == 1) {
-            opSql = new Produto();
-        }
-        if(op == 2){
-            opSql = new Venda();
-        }
+        if(op != -1){
+            if (op == 0) {
+                opSql = new Cliente();
+            }
+            if (op == 1) {
+                opSql = new Produto();
+            }
+            if(op == 2){
+                opSql = new Venda();
+            }
 
-        if(op2 == 0) {
-            opSql.cadastrar(opSql.conectar(dataSource));
-        }
-        if (op2 == 1) {
-            opSql.editar(opSql.conectar(dataSource));
-        }
-        if (op2 == 2) {
-            opSql.deletar(opSql.conectar(dataSource));
+            if(op2 == 0) {
+                opSql.cadastrar(dataSource);
+            }
+            if (op2 == 1) {
+                opSql.editar(dataSource);
+            }
+            if (op2 == 2) {
+                opSql.deletar(dataSource);
+            }
+            if (op2 == 3){
+                opSql.listar(dataSource);
+            }
         }
     }
 
@@ -87,6 +92,7 @@ public class Main {
         for(int i=0;i<iterar.length;i++){
             System.out.println(i+")"+iterar[i]);
         }
+        System.out.println("-1)Sair");
         System.out.print("Digite uma opcao:");
     }
 
@@ -97,7 +103,7 @@ public class Main {
     }
 
     private static void mostrarMenuTipo2(){
-        String[] entradas = {"Cadastrar","Editar","Deletar"};
+        String[] entradas = {"Cadastrar","Editar","Deletar","Listar"};
         iteraEntreStrings(entradas);
     }
 
