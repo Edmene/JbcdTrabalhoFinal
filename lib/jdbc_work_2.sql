@@ -9,7 +9,8 @@ CREATE TABLE item_venda
 (
     id INTEGER DEFAULT nextval('item_venda_id_seq'::regclass) NOT NULL,
     fk_item_produto INTEGER NOT NULL,
-    preco MONEY NOT NULL,
+    preco DOUBLE PRECISION NOT NULL,
+    quantidade DOUBLE PRECISION NOT NULL,
     CONSTRAINT item_venda_pkey PRIMARY KEY (id, fk_item_produto),
     CONSTRAINT item_produto FOREIGN KEY (fk_item_produto) REFERENCES produto (id)
 );
@@ -36,7 +37,7 @@ CREATE TABLE produto
     id INTEGER DEFAULT nextval('produto_id_seq'::regclass) PRIMARY KEY NOT NULL,
     nome VARCHAR(80) NOT NULL,
     descricao VARCHAR(200) NOT NULL,
-    preco MONEY NOT NULL
+    preco DOUBLE PRECISION NOT NULL
 );
 CREATE UNIQUE INDEX uniq_nome_produto ON produto (nome);
 CREATE TABLE venda
@@ -44,7 +45,7 @@ CREATE TABLE venda
     id INTEGER DEFAULT nextval('venda_id_seq'::regclass) PRIMARY KEY NOT NULL,
     venda_cliente INTEGER NOT NULL,
     data DATE NOT NULL,
-    valor_total MONEY NOT NULL,
+    valor_total DOUBLE PRECISION NOT NULL,
     status BOOLEAN NOT NULL,
     CONSTRAINT fk_venda_cliente FOREIGN KEY (venda_cliente) REFERENCES cliente (id)
 );
