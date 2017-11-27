@@ -18,9 +18,9 @@ public class Main {
             ResultSet rs = null;
             dataSource.setDatabaseName("jdbc_work");
             dataSource.setServerName("localhost");
-            dataSource.setPassword("JdbcWorkIfrs2017");
+            dataSource.setPassword("postgres");
             dataSource.setPortNumber(5432);
-            dataSource.setUser("ifrs2017ads");
+            dataSource.setUser("postgres");
 
             boolean continuar = true;
             while(continuar){
