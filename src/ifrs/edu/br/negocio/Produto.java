@@ -5,6 +5,7 @@ import ifrs.edu.br.ResultObjectTuple;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -168,7 +169,8 @@ public class Produto implements OperacoesCrud {
         int n=0;
         for (n=base;n<=base+9;n++){
             rs.absolute(n);
-            DecimalFormat df = new DecimalFormat("0.00##");
+            DecimalFormat df = new DecimalFormat("0.00");
+            df.setRoundingMode(RoundingMode.CEILING);
             String preco = df.format(rs.getFloat("preco"));
             System.out.println(String.format("%d) %s - %s", n, rs.getString("nome"), preco));
             if(!rs.absolute(n+1)){

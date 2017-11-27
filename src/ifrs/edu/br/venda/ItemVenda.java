@@ -6,6 +6,7 @@ import ifrs.edu.br.negocio.Produto;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
+import java.math.RoundingMode;
 import java.sql.*;
 import java.text.DecimalFormat;
 import java.util.Scanner;
@@ -71,6 +72,7 @@ public class ItemVenda implements OperacoesCrud {
     private void entradaUsuario(boolean todasAsEntradas, Connection connection) throws SQLException{
         Scanner sc = new Scanner(System.in);
         if(!todasAsEntradas){
+            System.out.println("Deseja alterar o produto N/s");
             String tmp = sc.nextLine();
             if (tmp.length() != 0){
                 setProduto(connection);
@@ -175,6 +177,9 @@ public class ItemVenda implements OperacoesCrud {
         PreparedStatement pStatementItemAssoc = pgConnection.prepareStatement("UPDATE lista_venda set lista_item_id = ?," +
                 " lista_item_prod = ?, venda_item = ? WHERE id = ?");
 
+        //PreparedStatement pStatementItemELista = pgConnection.prepareStatement("UPDATE item_venda SET fk_item_produto = ? JOIN lista venda" +
+        //  "ON item_venda.id = lista_item_id SET lista_item_prod = ?, preco = ?, quantidade = ?");
+
         pStatementItem.setInt(1, this.getProduto(pgConnection));
         pStatementItem.setFloat(2, this.valorUnitario);
         pStatementItem.setFloat(3, this.quantidade);
@@ -185,8 +190,8 @@ public class ItemVenda implements OperacoesCrud {
         pStatementItemAssoc.setInt(3, rs.getInt("venda_item"));
         pStatementItemAssoc.setInt(4, rs.getInt("id"));
 
-        pStatementItem.execute();
         pStatementItemAssoc.execute();
+        pStatementItem.execute();
 
         Statement statementTotal = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
                 ResultSet.CONCUR_UPDATABLE);
@@ -288,7 +293,8 @@ public class ItemVenda implements OperacoesCrud {
                     ResultSet.CONCUR_UPDATABLE);
             ResultSet produto = statement.executeQuery("SELECT * FROM produto WHERE id = '"
                     +this.itensAssociadosAVenda.getInt("lista_item_prod")+"'");
-            DecimalFormat df = new DecimalFormat("0.00##");
+            DecimalFormat df = new DecimalFormat("0.00");
+            df.setRoundingMode(RoundingMode.CEILING);
             produto.first();
             String preco = df.format(produto.getFloat("preco"));
             System.out.println(String.format("%d) %s - %s", n, produto.getString("nome"),

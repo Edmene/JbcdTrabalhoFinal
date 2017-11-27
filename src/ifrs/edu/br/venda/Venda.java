@@ -7,6 +7,7 @@ import ifrs.edu.br.negocio.Cliente;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import javax.sql.PooledConnection;
+import java.math.RoundingMode;
 import java.sql.*;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
@@ -193,7 +194,7 @@ public class Venda implements OperacoesCrud {
         while (true) {
             menuAlteraItens();
             String op = sc.nextLine();
-            if(op != "2") {
+            if(!op.contains("2")) {
                 itens.operacoesListaDeVenda(rs.getInt("id"), dataSource, op.contains("0"));
             }
             else {
@@ -262,7 +263,8 @@ public class Venda implements OperacoesCrud {
         int n=0;
         for (n=base;n<=base+9;n++){
             rs.absolute(n);
-            DecimalFormat df = new DecimalFormat("0.00##");
+            DecimalFormat df = new DecimalFormat("0.00");
+            df.setRoundingMode(RoundingMode.CEILING);
             String total = df.format(rs.getFloat("valor_total"));
             System.out.println(String.format("%d) %s - %s - %s", n, rs.getString("nome"),
                     total, String.valueOf(rs.getDate("data"))));

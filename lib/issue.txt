@@ -1,0 +1,2 @@
+org.postgresql.util.PSQLException: ERROR: insert or update on table "lista_venda" violates foreign key constraint "fk_lista_item"
+  Detalhe: Key (lista_item_id, lista_item_prod)=(7, 11) is not present in table "item_venda".
