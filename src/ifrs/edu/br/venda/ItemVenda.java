@@ -5,7 +5,6 @@ import ifrs.edu.br.ResultObjectTuple;
 import ifrs.edu.br.negocio.Produto;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
-import javax.sql.PooledConnection;
 import java.math.RoundingMode;
 import java.sql.*;
 import java.text.DecimalFormat;
@@ -16,6 +15,7 @@ public class ItemVenda implements OperacoesCrud {
     private float quantidade;
     private float valorUnitario;
     private int[] ids;
+    private int vendaId;
     private ResultSet itensAssociadosAVenda;
     private Connection connection;
 
@@ -25,6 +25,10 @@ public class ItemVenda implements OperacoesCrud {
 
     public int[] getIdsBanco(){
         return this.ids;
+    }
+
+    public void setVendaId(int vendaId) {
+        this.vendaId = vendaId;
     }
 
     public int getProduto(Connection connection) throws SQLException {
@@ -54,17 +58,23 @@ public class ItemVenda implements OperacoesCrud {
         this.valorUnitario = valorUnitario;
     }
 
-    public void operacoesListaDeVenda(Integer vendaId, PGConnectionPoolDataSource dataSource, Boolean op) throws SQLException{
+    public void operacoesListaDeVenda(Integer vendaId, PGConnectionPoolDataSource dataSource, String op) throws SQLException{
         try(ResultSet rs = pesquisa(0,String.valueOf(vendaId),conectar(dataSource).getConnection().createStatement(
                 ResultSet.TYPE_SCROLL_SENSITIVE,
                 ResultSet.CONCUR_UPDATABLE))){
+            this.vendaId =vendaId;
             this.itensAssociadosAVenda = rs;
             this.connection = conectar(dataSource).getConnection();
-            if(op) {
+            if(op.contains("0")) {
                 editar(dataSource);
             }
             else {
-                deletar(dataSource);
+                if(op.contains("1")){
+                    cadastrar(dataSource);
+                }
+                else {
+                    deletar(dataSource);
+                }
             }
         }
     }
@@ -97,8 +107,13 @@ public class ItemVenda implements OperacoesCrud {
         Produto prod = new Produto();
         ResultSet rs = prod.procuraRegistro(connection);
         rs = prod.selecionaRow(rs, prod);
-        this.produto = new Produto(rs);
-        this.setValorUnitario(rs.getFloat("preco"));
+        if(this.produto == null){
+            this.produto = new Produto();
+        }
+        if(!this.produto.equals(new Produto(rs))){
+            this.produto = new Produto(rs);
+            this.setValorUnitario(rs.getFloat("preco"));
+        }
         rs.close();
     }
 
@@ -113,19 +128,38 @@ public class ItemVenda implements OperacoesCrud {
         Connection pgConnection = conectar(dataSource).getConnection();
         Statement statement = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
             ResultSet.CONCUR_UPDATABLE);
+        ResultSet rs = null;
         entradaUsuario(true, pgConnection);
-        statement.execute("INSERT INTO item_venda (fk_item_produto, preco, quantidade)" +
-                "VALUES ('"+this.getProduto(pgConnection)+"','"+this.valorUnitario+"'," +
-                "'"+this.quantidade+"') RETURNING *");
-        //escolhe um produto
-        //popula o valorUnitario com o valor do produto (nao he referencia)
-        //pede quantidade
-        //cadastra no banco
-        pgConnection.commit();
-        ResultSet rs = statement.getResultSet();
-        rs.next();
-        int[] ids = {rs.getInt("id"), this.getProduto(pgConnection)};
-        this.ids = ids;
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Deseja confirmar produto? S/n");
+        if(!sc.nextLine().contains("n")) {
+            statement.execute("INSERT INTO item_venda (fk_item_produto, preco, quantidade, fk_item_venda)" +
+                    "VALUES ('" + this.getProduto(pgConnection) + "','" + this.valorUnitario + "'," +
+                    "'" + this.quantidade + "', '" + this.vendaId + "') RETURNING *");
+            //escolhe um produto
+            //popula o valorUnitario com o valor do produto (nao he referencia)
+            //pede quantidade
+            //cadastra no banco
+            pgConnection.commit();
+            rs = statement.getResultSet();
+            rs.next();
+            int[] ids = {rs.getInt("id"), this.getProduto(pgConnection)};
+            this.ids = ids;
+
+            Statement statementTotal = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                    ResultSet.CONCUR_UPDATABLE);
+            ResultSet totalValor = statementTotal.executeQuery("SELECT SUM(preco*quantidade) AS total FROM item_venda" +
+                    " WHERE fk_item_venda = '"+this.vendaId +"';");
+            totalValor.first();
+            PreparedStatement pStatementVenda = pgConnection.prepareStatement("UPDATE venda" +
+                    " SET valor_total = ? WHERE id = ?");
+            pStatementVenda.setFloat(1, totalValor.getFloat("total"));
+            pStatementVenda.setInt(2, this.vendaId);
+            pStatementVenda.execute();
+
+            pgConnection.commit();
+            pStatementVenda.close();
+        }
         return new ResultObjectTuple(rs, this);
     }
 
@@ -153,62 +187,42 @@ public class ItemVenda implements OperacoesCrud {
         if(rs == null){
             return;
         }
-        Statement statement = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
-                ResultSet.CONCUR_UPDATABLE);
-        ResultSet resultSet = statement.executeQuery("SELECT * FROM item_venda WHERE id = '"
-                +rs.getInt("lista_item_id")+"'" +
-                " AND fk_item_produto = '"+rs.getInt("lista_item_prod")+"';");
-        //pgConnection.commit();
         Statement statementProd = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
                 ResultSet.CONCUR_UPDATABLE);
         ResultSet resultSetProduto = statementProd.executeQuery("SELECT * FROM produto WHERE id = '"+
-                rs.getInt("lista_item_prod")+"'");
+                rs.getInt("fk_item_produto")+"'");
         resultSetProduto.first();
-        resultSet.first();
         this.produto = transformaEmProduto(resultSetProduto);
-        this.quantidade = resultSet.getFloat("quantidade");
-        this.valorUnitario = resultSet.getFloat("preco");
-        int item_id = resultSet.getInt("id");
+        this.quantidade = rs.getFloat("quantidade");
+        this.valorUnitario = rs.getFloat("preco");
+        int item_id = rs.getInt("id");
 
         entradaUsuario(false, pgConnection);
 
         PreparedStatement pStatementItem = pgConnection.prepareStatement("UPDATE item_venda SET fk_item_produto = ?," +
-                " preco = ?, quantidade = ? WHERE id = ?");
-        PreparedStatement pStatementItemAssoc = pgConnection.prepareStatement("UPDATE lista_venda set lista_item_id = ?," +
-                " lista_item_prod = ?, venda_item = ? WHERE id = ?");
-
-        //PreparedStatement pStatementItemELista = pgConnection.prepareStatement("UPDATE item_venda SET fk_item_produto = ? JOIN lista venda" +
-        //  "ON item_venda.id = lista_item_id SET lista_item_prod = ?, preco = ?, quantidade = ?");
+                " preco = ?, quantidade = ?, fk_item_venda = ? WHERE id = ?");
 
         pStatementItem.setInt(1, this.getProduto(pgConnection));
         pStatementItem.setFloat(2, this.valorUnitario);
         pStatementItem.setFloat(3, this.quantidade);
-        pStatementItem.setInt(4, item_id);
+        pStatementItem.setInt(4, this.vendaId);
+        pStatementItem.setInt(5, item_id);
 
-        pStatementItemAssoc.setInt(1, item_id);
-        pStatementItemAssoc.setInt(2, this.getProduto(pgConnection));
-        pStatementItemAssoc.setInt(3, rs.getInt("venda_item"));
-        pStatementItemAssoc.setInt(4, rs.getInt("id"));
-
-        pStatementItemAssoc.execute();
         pStatementItem.execute();
 
         Statement statementTotal = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
                 ResultSet.CONCUR_UPDATABLE);
-        ResultSet totalValor = statementTotal.executeQuery("SELECT SUM(preco*quantidade) AS total FROM item_venda CROSS JOIN lista_venda" +
-                " WHERE item_venda.id = lista_venda.lista_item_id AND venda_item = '"+rs.getInt("venda_item")+"';");
+        ResultSet totalValor = statementTotal.executeQuery("SELECT SUM(preco*quantidade) AS total FROM item_venda" +
+                " WHERE fk_item_venda = '"+this.vendaId +"';");
         totalValor.first();
         PreparedStatement pStatementVenda = pgConnection.prepareStatement("UPDATE venda" +
                 " SET valor_total = ? WHERE id = ?");
         pStatementVenda.setFloat(1, totalValor.getFloat("total"));
-        pStatementVenda.setInt(2, rs.getInt("venda_item"));
+        pStatementVenda.setInt(2, this.vendaId);
         pStatementVenda.execute();
 
-        statement.close();
         pStatementItem.close();
-        pStatementItemAssoc.close();
         pStatementVenda.close();
-
         pgConnection.commit();
         rs.close();
         pgConnection.close();
@@ -235,28 +249,35 @@ public class ItemVenda implements OperacoesCrud {
         if(rs == null){
             return;
         }
+
+        Statement statementProd = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_UPDATABLE);
+        ResultSet resultSetProduto = statementProd.executeQuery("SELECT * FROM produto WHERE id = '"+
+                rs.getInt("fk_item_produto")+"'");
+        resultSetProduto.first();
+        this.produto = transformaEmProduto(resultSetProduto);
+        this.quantidade = rs.getFloat("quantidade");
+        this.valorUnitario = rs.getFloat("preco");
+
         PreparedStatement pStatement = pgConnection.prepareStatement("DELETE FROM item_venda WHERE id = ?");
-        PreparedStatement pStatementLista = pgConnection.prepareStatement("DELETE FROM lista_venda WHERE " +
-                "lista_item_id = ?");
-        pStatement.setInt(1, rs.getInt("lista_item_id"));
-        pStatementLista.setInt(1, rs.getInt("lista_item_id"));
+        pStatement.setInt(1, rs.getInt("id"));
 
         pStatement.execute();
-        pStatementLista.execute();
         pgConnection.commit();
 
-        Statement statement = pgConnection.createStatement();
-        ResultSet totalValor = statement.executeQuery("SELECT SUM(preco) AS total FROM item_venda CROSS JOIN lista_venda" +
-                " WHERE item.venda = lista_venda.lista_item_id AND venda_item = '"+rs.getInt("venda_item")+"';");
+        Statement statement = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_UPDATABLE);
+        ResultSet totalValor = statement.executeQuery("SELECT SUM(preco*quantidade) AS total FROM item_venda" +
+                " WHERE fk_item_venda = '"+this.vendaId +"';");
+        totalValor.first();
         PreparedStatement pStatementVenda = pgConnection.prepareStatement("UPDATE venda" +
                 " SET valor_total = ? WHERE id = ?");
         pStatementVenda.setFloat(1, totalValor.getFloat("total"));
-        pStatementVenda.setInt(2, rs.getInt("venda_item"));
+        pStatementVenda.setInt(2, this.vendaId);
         pStatementVenda.execute();
 
         pgConnection.commit();
         pStatement.close();
-        pStatementLista.close();
         pStatementVenda.close();
         rs.close();
         totalValor.close();
@@ -273,10 +294,9 @@ public class ItemVenda implements OperacoesCrud {
 
     @Override
     public ResultSet pesquisa(int tipo, String entrada, Statement stmt) throws SQLException {
-        String[] entradaTratada = entrada.split(";");
-        String query = "SELECT * FROM lista_venda ";
+        String query = "SELECT * FROM item_venda ";
         if(tipo != 3) {
-            query+="WHERE venda_item = '" + entradaTratada[0] + "';";
+            query+="WHERE fk_item_venda = '" + entrada + "';";
         }
         ResultSet rs = stmt.executeQuery(query);
         return rs;
@@ -292,13 +312,15 @@ public class ItemVenda implements OperacoesCrud {
             Statement statement = this.connection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
                     ResultSet.CONCUR_UPDATABLE);
             ResultSet produto = statement.executeQuery("SELECT * FROM produto WHERE id = '"
-                    +this.itensAssociadosAVenda.getInt("lista_item_prod")+"'");
+                    +this.itensAssociadosAVenda.getInt("fk_item_produto")+"'");
             DecimalFormat df = new DecimalFormat("0.00");
             df.setRoundingMode(RoundingMode.CEILING);
             produto.first();
             String preco = df.format(produto.getFloat("preco"));
-            System.out.println(String.format("%d) %s - %s", n, produto.getString("nome"),
-                    preco));
+            String antigo_preco = df.format(rs.getFloat("preco"));
+            String quantidade = df.format(rs.getFloat("quantidade"));
+            System.out.println(String.format("%d) %s - N:%s A:%s qtd:%s", n, produto.getString("nome"),
+                    preco, antigo_preco, quantidade));
             if(!rs.absolute(n+1)){
                 break;
             }

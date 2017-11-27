@@ -18,6 +18,14 @@ public class Cliente extends Pessoa implements OperacoesCrud {
 
     public Cliente(){}
 
+    public Cliente(ResultSet rs) throws SQLException{
+        this.setNome(rs.getString("nome"));
+        this.setSobrenome(rs.getString("sobrenome"));
+        this.setCpf(rs.getString("cpf"));
+        this.setBandeiraCC(rs.getString("bandeiracc"));
+        this.setNumeroCC(rs.getString("numerocc"));
+    }
+
     public String getBandeiraCC() {
         return bandeiraCC;
     }

@@ -122,17 +122,6 @@ public class Produto implements OperacoesCrud {
     public void editar(PGConnectionPoolDataSource dataSource) throws SQLException {
         Connection pgConnection = conectar(dataSource).getConnection();
         ResultSet rs = procuraRegistro(pgConnection);
-        /*
-        if(rs.getRow() == 0){
-            return;
-        }
-        System.out.println();
-        rs = selecionaRow(rs, this);
-        if(rs.getRow() == 0){
-            return;
-        }
-        */
-
         if(rs == null){
             return;
         }

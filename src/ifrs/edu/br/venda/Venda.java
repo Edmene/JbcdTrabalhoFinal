@@ -6,7 +6,6 @@ import ifrs.edu.br.ResultObjectTuple;
 import ifrs.edu.br.negocio.Cliente;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
-import javax.sql.PooledConnection;
 import java.math.RoundingMode;
 import java.sql.*;
 import java.text.DecimalFormat;
@@ -60,7 +59,7 @@ public class Venda implements OperacoesCrud {
             this.listaItens.remove(item);
             float total = 0;
             for (ItemVenda listaIten : listaItens) {
-                total += listaIten.getValorUnitario();
+                total -= listaIten.getValorUnitario()*listaIten.getQuantidade();
             }
             this.valorTotal = total;
         }
@@ -73,15 +72,17 @@ public class Venda implements OperacoesCrud {
     private void menuItens(){
         System.out.println("\nSelecione uma acao");
         System.out.println("0) Adicionar");
-        System.out.println("1) Finalizar compra");
+        System.out.println("1) Remover");
+        System.out.println("2) Finalizar compra");
         System.out.print("Op: ");
     }
 
     private void menuAlteraItens(){
         System.out.println("\nSelecione uma acao");
         System.out.println("0) Editar");
-        System.out.println("1) Remover");
-        System.out.println("2) Finalizar alteracoes");
+        System.out.println("1) Adicionar");
+        System.out.println("2) Remover");
+        System.out.println("3) Finalizar alteracoes");
         System.out.print("Op: ");
     }
 
@@ -95,8 +96,8 @@ public class Venda implements OperacoesCrud {
     public ResultObjectTuple cadastrar(PGConnectionPoolDataSource dataSource) throws SQLException {
         Connection pgConnection = conectar(dataSource).getConnection();
         ResultSet resultSet = null;
-        Savepoint savepoint = null;
         try {
+            this.status = true;
             this.date = java.sql.Date.valueOf(LocalDate.now());
             Statement statement = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
                     ResultSet.CONCUR_UPDATABLE);
@@ -112,54 +113,55 @@ public class Venda implements OperacoesCrud {
                 rs.first();
             }
             rs = selecionaRow(rs, cli);
+            this.cliente = new Cliente(rs);
             boolean continuarAdicionarItens = true;
+
+            Statement venda = pgConnection.createStatement();
+            venda.execute("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
+                    " VALUES ('"+String.valueOf(rs.getInt("id"))+"','"+
+                    this.date+"','"+this.valorTotal+"','true') RETURNING *;");
+            resultSet = venda.getResultSet(); //Pegando o retorno da insersao para uso nos itens
+            resultSet.next();
+            pgConnection.commit();
+            int venda_id = resultSet.getInt("id");
+
             while (continuarAdicionarItens){
                 menuItens();
                 Scanner sc = new Scanner(System.in);
-                if(sc.nextInt() == 1){
+                int operacao = sc.nextInt();
+                if(operacao == 2){
                     continuarAdicionarItens = false;
                     if(this.valorTotal <= 0){
                         pgConnection.rollback();
                     }
                 }
                 else {
-                    ItemVenda item = new ItemVenda();
-                    item = (ItemVenda) item.cadastrar(dataSource).getObject();
-                    if(!listaItens.contains(item)){
-                        adicionarItem(item);
+                    if(operacao == 0) {
+                        ItemVenda item = new ItemVenda();
+                        item.setVendaId(venda_id);
+                        ResultObjectTuple result = item.cadastrar(dataSource);
+                        if (result.getResultSet() != null) {
+                            item = (ItemVenda) result.getObject();
+                        } else {
+                            continue;
+                        }
+                        if (!listaItens.contains(item)) {
+                            adicionarItem(item);
+                        }
+                    }
+                    else {
+                        ItemVenda item = new ItemVenda();
+                        item.setVendaId(venda_id);
+                        item.operacoesListaDeVenda(venda_id,dataSource,"2");
+                        removerItem(item);
                     }
                 }
             }
-            savepoint = pgConnection.setSavepoint();
-            //Primeira Query responsavel pela insersao de uma pessoa
-            Statement venda = pgConnection.createStatement();
-            venda.execute("INSERT INTO venda (venda_cliente, data, valor_total, status)" +
-                " VALUES ('"+String.valueOf(rs.getInt("id"))+"','"+
-                    this.date+"','"+this.valorTotal+"','true') RETURNING *;");
-            resultSet = venda.getResultSet(); //Pegando o retorno da insersao para uso nos itens
-            resultSet.next();
-            int venda_id = resultSet.getInt("id");
-            //resultSet.next();
-            //rs.close();
-            for (ItemVenda item : listaItens){
-                statement.execute("INSERT INTO lista_venda (lista_item_id, lista_item_prod, venda_item)"+
-                "VALUES ('"+item.getIdsBanco()[0]+"','"+item.getIdsBanco()[1]+"','"+venda_id+"')");
-            }
-            resultSet.close();
             pgConnection.commit();
-
-            /* resultSet.getInt("id")
-            statement.executeUpdate("UPDATE venda SET valor_total='"+this.valorTotal+"'");
-            //Segunda query responsavel pela insersao de um cliente
-            statement.addBatch("INSERT INTO cliente (id, bandeiracc, numerocc)"+
-                    " VALUES ('SELECT id from pessoa WHERE cpf = \'"+this.getCpf()+"\'','"
-                    +this.bandeiraCC+"','"+this.numeroCC+"')");
-            */
-            //statement.executeBatch();
-
+            resultSet.close();
         }
         catch (Exception e){
-            pgConnection.rollback(savepoint);
+            pgConnection.rollback();
             System.err.println(e);
         }
         return new ResultObjectTuple(resultSet, this);
@@ -194,8 +196,8 @@ public class Venda implements OperacoesCrud {
         while (true) {
             menuAlteraItens();
             String op = sc.nextLine();
-            if(!op.contains("2")) {
-                itens.operacoesListaDeVenda(rs.getInt("id"), dataSource, op.contains("0"));
+            if(!op.contains("3")) {
+                itens.operacoesListaDeVenda(rs.getInt("id"), dataSource, op);
             }
             else {
                 break;
@@ -215,18 +217,13 @@ public class Venda implements OperacoesCrud {
         ResultSet rs = procuraRegistro(pgConnection);
         rs = selecionaRow(rs, this);
         rs.updateBoolean("status", false);
+        rs.updateRow();
         pgConnection.commit();
         rs.close();
         pgConnection.close();
         //cancelar venda
         //atualiza no banco
     }
-
-    /*
-    public void deletarVendaNula(ResultSet resultSet) throws SQLException {
-        resultSet.deleteRow();
-    }
-    */
 
     @Override
     public ResultSet procuraRegistro(Connection connection) throws SQLException {
@@ -266,8 +263,8 @@ public class Venda implements OperacoesCrud {
             DecimalFormat df = new DecimalFormat("0.00");
             df.setRoundingMode(RoundingMode.CEILING);
             String total = df.format(rs.getFloat("valor_total"));
-            System.out.println(String.format("%d) %s - %s - %s", n, rs.getString("nome"),
-                    total, String.valueOf(rs.getDate("data"))));
+            System.out.println(String.format("%d) %s - %s - %s %s", n, rs.getString("nome"),
+                    total, String.valueOf(rs.getDate("data")), isAtivo(rs.getBoolean("status"))));
 
             if(!rs.absolute(n+1)){
                 break;
@@ -284,6 +281,15 @@ public class Venda implements OperacoesCrud {
         System.out.println("q) Voltar");
 
         return n;
+    }
+
+    private String isAtivo(Boolean bool){
+        if(bool){
+            return "Ativo";
+        }
+        else {
+            return "Cancelada";
+        }
     }
 
 }
