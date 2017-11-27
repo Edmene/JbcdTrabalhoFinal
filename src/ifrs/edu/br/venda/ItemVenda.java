@@ -151,15 +151,22 @@ public class ItemVenda implements OperacoesCrud {
         if(rs == null){
             return;
         }
-        Statement statement = pgConnection.createStatement();
-        ResultSet resultSet = statement.executeQuery("SELECT * FROM item_venda WHERE lista_item_id = '"
+        Statement statement = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_UPDATABLE);
+        ResultSet resultSet = statement.executeQuery("SELECT * FROM item_venda WHERE id = '"
                 +rs.getInt("lista_item_id")+"'" +
-                " AND lista_produto_id = '"+rs.getInt("lista_produto_id")+"';");
-        pgConnection.commit();
-        this.produto = transformaEmProduto(statement.executeQuery("SELECT * FROM produto WHERE id = '"+
-                rs.getInt("lista_produto_id")+"'"));
-        this.quantidade = resultSet.getInt("quantidade");
+                " AND fk_item_produto = '"+rs.getInt("lista_item_prod")+"';");
+        //pgConnection.commit();
+        Statement statementProd = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_UPDATABLE);
+        ResultSet resultSetProduto = statementProd.executeQuery("SELECT * FROM produto WHERE id = '"+
+                rs.getInt("lista_item_prod")+"'");
+        resultSetProduto.first();
+        resultSet.first();
+        this.produto = transformaEmProduto(resultSetProduto);
+        this.quantidade = resultSet.getFloat("quantidade");
         this.valorUnitario = resultSet.getFloat("preco");
+        int item_id = resultSet.getInt("id");
 
         entradaUsuario(false, pgConnection);
 
@@ -171,9 +178,9 @@ public class ItemVenda implements OperacoesCrud {
         pStatementItem.setInt(1, this.getProduto(pgConnection));
         pStatementItem.setFloat(2, this.valorUnitario);
         pStatementItem.setFloat(3, this.quantidade);
-        pStatementItem.setInt(4, resultSet.getInt("id"));
+        pStatementItem.setInt(4, item_id);
 
-        pStatementItemAssoc.setInt(1, resultSet.getInt("id"));
+        pStatementItemAssoc.setInt(1, item_id);
         pStatementItemAssoc.setInt(2, this.getProduto(pgConnection));
         pStatementItemAssoc.setInt(3, rs.getInt("venda_item"));
         pStatementItemAssoc.setInt(4, rs.getInt("id"));
@@ -181,8 +188,11 @@ public class ItemVenda implements OperacoesCrud {
         pStatementItem.execute();
         pStatementItemAssoc.execute();
 
-        ResultSet totalValor = statement.executeQuery("SELECT SUM(preco*quantidade) AS total FROM item_venda CROSS JOIN lista_venda" +
-                " WHERE item.venda = lista_venda.lista_item_id AND venda_item = '"+rs.getInt("venda_item")+"';");
+        Statement statementTotal = pgConnection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_UPDATABLE);
+        ResultSet totalValor = statementTotal.executeQuery("SELECT SUM(preco*quantidade) AS total FROM item_venda CROSS JOIN lista_venda" +
+                " WHERE item_venda.id = lista_venda.lista_item_id AND venda_item = '"+rs.getInt("venda_item")+"';");
+        totalValor.first();
         PreparedStatement pStatementVenda = pgConnection.prepareStatement("UPDATE venda" +
                 " SET valor_total = ? WHERE id = ?");
         pStatementVenda.setFloat(1, totalValor.getFloat("total"));
@@ -274,8 +284,9 @@ public class ItemVenda implements OperacoesCrud {
         int n=0;
         for (n=base;n<=base+9;n++){
             rs.absolute(n);
-            Statement statement = this.connection.createStatement();
-            ResultSet produto = statement.executeQuery("SELECT nome FROM produto WHERE id = '"
+            Statement statement = this.connection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                    ResultSet.CONCUR_UPDATABLE);
+            ResultSet produto = statement.executeQuery("SELECT * FROM produto WHERE id = '"
                     +this.itensAssociadosAVenda.getInt("lista_item_prod")+"'");
             DecimalFormat df = new DecimalFormat("0.00##");
             produto.first();
