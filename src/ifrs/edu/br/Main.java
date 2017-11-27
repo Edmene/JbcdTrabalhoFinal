@@ -17,10 +17,10 @@ public class Main {
             dataSource.setDefaultAutoCommit(false);
             ResultSet rs = null;
             dataSource.setDatabaseName("jdbc_work");
-            dataSource.setServerName("192.168.1.3");
-            dataSource.setPassword("CreaAuzen64");
+            dataSource.setServerName("localhost");
+            dataSource.setPassword("JdbcWorkIfrs2017");
             dataSource.setPortNumber(5432);
-            dataSource.setUser("postgres");
+            dataSource.setUser("ifrs2017ads");
 
             boolean continuar = true;
             while(continuar){
