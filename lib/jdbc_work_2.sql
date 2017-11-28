@@ -7,17 +7,6 @@ CREATE TABLE produto(
     preco DOUBLE PRECISION NOT NULL
 );
 
-CREATE TABLE item_venda(
-    id SERIAL NOT NULL,
-    fk_item_produto INTEGER NOT NULL CONSTRAINT fk_item_produto
-        REFERENCES produto,
-    preco DOUBLE PRECISION NOT NULL,
-    quantidade DOUBLE PRECISION NOT NULL,
-    fk_item_venda INTEGER NOT NULL CONSTRAINT fk_item_venda
-      REFERENCES venda,
-    PRIMARY KEY (id, fk_item_produto, fk_item_venda)
-);
-
 CREATE TABLE pessoa(
     id SERIAL NOT NULL CONSTRAINT pessoa_pkey PRIMARY KEY,
     cpf VARCHAR(11) NOT NULL CONSTRAINT uniq_cpf_pessoa UNIQUE,
@@ -40,6 +29,17 @@ CREATE TABLE venda(
     data date NOT NULL,
     valor_total DOUBLE PRECISION NOT NULL,
     status BOOLEAN NOT NULL
+);
+
+CREATE TABLE item_venda(
+    id SERIAL NOT NULL,
+    fk_item_produto INTEGER NOT NULL CONSTRAINT fk_item_produto
+    REFERENCES produto,
+    preco DOUBLE PRECISION NOT NULL,
+    quantidade DOUBLE PRECISION NOT NULL,
+    fk_item_venda INTEGER NOT NULL CONSTRAINT fk_item_venda
+    REFERENCES venda,
+    PRIMARY KEY (id, fk_item_produto, fk_item_venda)
 );
 
 
