@@ -5,14 +5,24 @@ import ifrs.edu.br.negocio.Produto;
 import ifrs.edu.br.venda.Venda;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Formatter;
 import java.util.Scanner;
 
 public class Main {
+
+    private static String usuario = new String();
+    private static String senha = new String();
+    private static String nomeDb = new String();
+    private static String servidor = new String();
+    private static String porta = new String();
 
     public static void main(String[] args){
         Scanner sc = new Scanner(System.in);
@@ -21,41 +31,45 @@ public class Main {
             dataSource.setDefaultAutoCommit(false);
             ResultSet rs = null;
             Path path = Paths.get("server.conf");
-            path.toFile().createNewFile();
-            File file = path.toFile();
-            Scanner scFile = new Scanner(file).useDelimiter(";");
-            String usuario = new String();
-            String senha = new String();
-            String nomeDb = new String();
-            String servidor = new String();
-            String porta = new String();
-            while (scFile.hasNext()){
-                String tmp = scFile.next();
-                tmp = tmp.replace(";","").trim();
-                if(tmp.contains("user=")){
-                    usuario=tmp.replace("user=", "");
+            Boolean existe = path.toFile().createNewFile();
+
+            if(!existe) {
+                File file = path.toFile();
+                Scanner scFile = new Scanner(file).useDelimiter(";");
+                while (scFile.hasNext()) {
+                    String tmp = scFile.next();
+                    tmp = tmp.replace(";", "").trim();
+                    if (tmp.contains("user=")) {
+                        usuario = tmp;
+                        replaceUser();
+                    }
+                    if (tmp.contains("password=")) {
+                        senha = tmp;
+                        replacePassword();
+                    }
+                    if (tmp.contains("db=")) {
+                        nomeDb = tmp;
+                        replaceDb();
+                    }
+                    if (tmp.contains("server=")) {
+                        servidor = tmp;
+                        replaceServer();
+                    }
+                    if (tmp.contains("port=")) {
+                        porta = tmp;
+                        replacePort();
+                    }
                 }
-                if(tmp.contains("password=")){
-                    senha=tmp.replace("password=", "");
+                try {
+                    Integer.valueOf(porta);
                 }
-                if(tmp.contains("db=")){
-                    nomeDb=tmp.replace("db=", "");
-                }
-                if(tmp.contains("server=")){
-                    servidor=tmp.replace("server=", "");
-                }
-                if(tmp.contains("port=")){
-                    porta=tmp.replace("port=", "");
+                catch (NumberFormatException e){
+                    falhaDeLeitura(path, sc);
                 }
             }
-
-            /*
-            dataSource.setDatabaseName("jdbc_work");
-            dataSource.setServerName("localhost");
-            dataSource.setPassword("postgres");
-            dataSource.setPortNumber(5432);
-            dataSource.setUser("postgres");
-            */
+            else {
+                falhaDeLeitura(path, sc);
+            }
 
             dataSource.setUser(usuario);
             dataSource.setPassword(senha);
@@ -92,6 +106,51 @@ public class Main {
         catch (Exception e){
             System.out.println(e);
         }
+    }
+
+    private static void replaceUser(){
+        usuario = usuario.replace("user=", "");
+    }
+
+    private static void replacePassword(){
+        senha = senha.replace("password=", "");
+    }
+
+    private static void replaceDb(){
+        nomeDb = nomeDb.replace("db=", "");
+    }
+
+    private static void replaceServer(){
+        servidor = servidor.replace("server=", "");
+    }
+
+    private static void replacePort(){
+        porta = porta.replace("port=", "");
+    }
+
+    private static void falhaDeLeitura(Path path, Scanner sc) throws IOException{
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Por favor digite as configuracoes do servidor");
+        System.out.print("Usuario: ");
+        usuario = "user="+scanner.nextLine();
+        System.out.print("Senha: ");
+        senha = "password="+scanner.nextLine();
+        System.out.print("Nome do DB: ");
+        nomeDb = "db="+scanner.nextLine();
+        System.out.print("Servidor: ");
+        servidor = "server="+scanner.nextLine();
+        System.out.print("Porta: ");
+        porta = "port="+scanner.nextLine();
+
+        Formatter ft = new Formatter(new BufferedWriter(new FileWriter(path.toFile(),false)));
+        ft.format("%s;\n%s;\n%s;\n%s;\n%s;", usuario, senha, nomeDb, servidor, porta);
+        ft.close();
+
+        replaceUser();
+        replacePassword();
+        replaceDb();
+        replaceServer();
+        replacePort();
     }
 
     private static void subMenus(int op, int op2, PGConnectionPoolDataSource dataSource) throws SQLException{
